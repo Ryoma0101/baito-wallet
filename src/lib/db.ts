@@ -187,6 +187,46 @@ export async function getActiveJobs(): Promise<Job[]> {
   }));
 }
 
+export async function getAllJobs(): Promise<Job[]> {
+  const database = getDB();
+  const rows = await database.getAllAsync<{
+    id: number;
+    name: string;
+    hourly_wage: number;
+    employment_type: string;
+    is_active: number;
+  }>('SELECT * FROM jobs ORDER BY is_active DESC, id DESC');
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    hourly_wage: row.hourly_wage,
+    employment_type: row.employment_type as Job['employment_type'],
+    is_active: row.is_active === 1,
+  }));
+}
+
+export async function addJob(job: Omit<Job, 'id'>): Promise<void> {
+  const database = getDB();
+  await database.runAsync(
+    'INSERT INTO jobs (name, hourly_wage, employment_type, is_active) VALUES (?, ?, ?, ?)',
+    [job.name, job.hourly_wage, job.employment_type, job.is_active ? 1 : 0]
+  );
+}
+
+export async function updateJob(job: Job): Promise<void> {
+  const database = getDB();
+  await database.runAsync(
+    'UPDATE jobs SET name = ?, hourly_wage = ?, employment_type = ?, is_active = ? WHERE id = ?',
+    [job.name, job.hourly_wage, job.employment_type, job.is_active ? 1 : 0, job.id]
+  );
+}
+
+export async function deleteJob(id: number): Promise<void> {
+  const database = getDB();
+  await database.runAsync('DELETE FROM jobs WHERE id = ?', [id]);
+}
+
 // ============================================================
 // shifts
 // ============================================================

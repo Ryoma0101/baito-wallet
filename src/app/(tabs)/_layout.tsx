@@ -23,6 +23,16 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="jobs"
+        options={{
+          title: 'バイト先',
+          headerTitle: 'バイト先一覧',
+          tabBarIcon: ({ color }) => (
+            <Feather name="briefcase" size={22} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
