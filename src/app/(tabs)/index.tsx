@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
 
 import { getUserSettings, getActiveJobs } from '@/lib/db';
 import { fetchTaxRules } from '@/lib/rules';
@@ -216,7 +217,10 @@ export default function HomeScreen() {
 
         {/* 残り時間換算 */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoCardTitle}>⏱ 残り時間換算</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 6 }}>
+            <Feather name="clock" size={16} color="#555" />
+            <Text style={[styles.infoCardTitle, { marginBottom: 0 }]}>残り時間換算</Text>
+          </View>
           {remainingHours !== null ? (
             <>
               <Text style={styles.infoCardValue}>
@@ -245,9 +249,10 @@ export default function HomeScreen() {
                 style={[styles.wallCard, isLowest && styles.wallCardHighlight]}
               >
                 <View style={styles.wallCardHeader}>
-                  <Text style={styles.wallName}>
-                    {isLowest ? '⭐ ' : ''}{wall.name}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    {isLowest && <Feather name="star" size={14} color="#FF9500" />}
+                    <Text style={styles.wallName}>{wall.name}</Text>
+                  </View>
                   <Text style={styles.wallAmount}>{formatYen(wall.amount)}</Text>
                 </View>
                 <View style={styles.miniGaugeBackground}>
