@@ -24,6 +24,7 @@ const VALID_TAX_RULES: TaxRules = {
       body: 'テスト用の本文',
       published_at: '2026-01-01',
       important: true,
+      target: ['all'],
     },
   ],
 };
