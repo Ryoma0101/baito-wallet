@@ -95,31 +95,49 @@ const migrations: Migration[] = [
 export async function initDB(): Promise<SQLite.SQLiteDatabase> {
   if (db) return db;
 
-  db = await SQLite.openDatabaseAsync('baito-wallet.db');
+  try {
+    db = await SQLite.openDatabaseAsync('baito-wallet.db');
 
-  // マイグレーション管理テーブル
-  await db.runAsync(`
-    CREATE TABLE IF NOT EXISTS _migrations (
-      version INTEGER PRIMARY KEY,
-      applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `);
+    // マイグレーション管理テーブル
+    await db.runAsync(`
+      CREATE TABLE IF NOT EXISTS _migrations (
+        version INTEGER PRIMARY KEY,
+        applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
 
-  // 適用済みバージョンの取得
-  const applied = await db.getAllAsync<{ version: number }>(
-    'SELECT version FROM _migrations ORDER BY version',
-  );
-  const appliedVersions = new Set(applied.map((row) => row.version));
+    // 適用済みバージョンの取得
+    const applied = await db.getAllAsync<{ version: number }>(
+      'SELECT version FROM _migrations ORDER BY version',
+    );
+    const appliedVersions = new Set(applied.map((row) => row.version));
 
-  // 未適用のマイグレーションを順番に実行
-  for (const migration of migrations) {
-    if (!appliedVersions.has(migration.version)) {
-      await migration.up(db);
-      await db.runAsync(
-        'INSERT INTO _migrations (version) VALUES (?)',
-        [migration.version],
-      );
+    // 未適用のマイグレーションを順番に実行
+    for (const migration of migrations) {
+      if (!appliedVersions.has(migration.version)) {
+        await migration.up(db);
+        await db.runAsync(
+          'INSERT INTO _migrations (version) VALUES (?)',
+          [migration.version],
+        );
+      }
     }
+  } catch (error) {
+    console.error('Failed to initialize DB, deleting and retrying...', error);
+    db = null;
+    try {
+      const dbDir = FileSystem.documentDirectory + 'SQLite/';
+      const dbPath = dbDir + 'baito-wallet.db';
+      const info = await FileSystem.getInfoAsync(dbPath);
+      if (info.exists) {
+        await FileSystem.deleteAsync(dbPath);
+        console.log('Successfully deleted corrupted database.');
+      }
+    } catch (e) {
+      console.error('Failed to delete corrupted database', e);
+    }
+    // Throw the error so the app knows it failed, and the next launch will be fresh.
+    throw error;
   }
 
   return db;
