@@ -43,6 +43,16 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="payslips"
+        options={{
+          title: '明細',
+          headerTitle: '給与明細',
+          tabBarIcon: ({ color }) => (
+            <Feather name="file-text" size={22} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

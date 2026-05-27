@@ -263,6 +263,27 @@ export async function deleteShift(id: number): Promise<void> {
 
 export async function getAllPayslips(): Promise<import('@/types').Payslip[]> {
   const database = getDB();
-  return await database.getAllAsync<import('@/types').Payslip>('SELECT * FROM payslips');
+  return await database.getAllAsync<import('@/types').Payslip>('SELECT * FROM payslips ORDER BY year DESC, month DESC');
+}
+
+export async function addPayslip(payslip: Omit<import('@/types').Payslip, 'id'>): Promise<void> {
+  const database = getDB();
+  await database.runAsync(
+    'INSERT INTO payslips (job_id, year, month, actual_amount) VALUES (?, ?, ?, ?)',
+    [payslip.job_id, payslip.year, payslip.month, payslip.actual_amount]
+  );
+}
+
+export async function updatePayslip(payslip: import('@/types').Payslip): Promise<void> {
+  const database = getDB();
+  await database.runAsync(
+    'UPDATE payslips SET job_id = ?, year = ?, month = ?, actual_amount = ? WHERE id = ?',
+    [payslip.job_id, payslip.year, payslip.month, payslip.actual_amount, payslip.id]
+  );
+}
+
+export async function deletePayslip(id: number): Promise<void> {
+  const database = getDB();
+  await database.runAsync('DELETE FROM payslips WHERE id = ?', [id]);
 }
 
