@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { UserSettings, Job } from '@/types';
 
 let db: SQLite.SQLiteDatabase | null = null;
@@ -316,3 +317,36 @@ export async function deletePayslip(id: number): Promise<void> {
   await database.runAsync('DELETE FROM payslips WHERE id = ?', [id]);
 }
 
+// ============================================================
+// Data Reset
+// ============================================================
+
+export async function resetAllData(): Promise<void> {
+  const database = getDB();
+
+  // 1. Delete all images
+  const allPayslips = await database.getAllAsync<{ image_uri: string | null }>(
+    'SELECT image_uri FROM payslips WHERE image_uri IS NOT NULL'
+  );
+  
+  for (const p of allPayslips) {
+    if (p.image_uri) {
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(p.image_uri);
+        if (fileInfo.exists) {
+          await FileSystem.deleteAsync(p.image_uri);
+        }
+      } catch (e) {
+        console.warn('Failed to delete image', e);
+      }
+    }
+  }
+
+  // 2. Clear all tables (reset ID sequences as well if desired, but DELETE FROM is enough for reset)
+  await database.execAsync(`
+    DELETE FROM payslips;
+    DELETE FROM shifts;
+    DELETE FROM jobs;
+    DELETE FROM user_settings;
+  `);
+}

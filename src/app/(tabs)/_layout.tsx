@@ -12,7 +12,7 @@ export default function TabLayout() {
       <TouchableOpacity onPress={togglePrivacyMode}>
         <Feather name={privacyMode ? "eye-off" : "eye"} size={22} color="#666" />
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push('/onboarding')}>
+      <TouchableOpacity onPress={() => router.push('/settings')}>
         <Feather name="settings" size={22} color="#666" />
       </TouchableOpacity>
     </View>
