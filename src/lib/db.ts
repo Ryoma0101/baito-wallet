@@ -186,3 +186,22 @@ export async function getActiveJobs(): Promise<Job[]> {
     is_active: row.is_active === 1,
   }));
 }
+
+// ============================================================
+// shifts
+// ============================================================
+
+export async function getAllShifts(): Promise<import('@/types').Shift[]> {
+  const database = getDB();
+  return await database.getAllAsync<import('@/types').Shift>('SELECT * FROM shifts');
+}
+
+// ============================================================
+// payslips
+// ============================================================
+
+export async function getAllPayslips(): Promise<import('@/types').Payslip[]> {
+  const database = getDB();
+  return await database.getAllAsync<import('@/types').Payslip>('SELECT * FROM payslips');
+}
+
