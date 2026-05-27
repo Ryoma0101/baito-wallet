@@ -33,6 +33,9 @@ export interface WallValues {
   residence_tax_approx: number;
 }
 
+/** ニュースの対象ユーザー種別 */
+export type NewsTarget = 'all' | 'large_company' | 'parent' | 'spouse';
+
 /** 税制ニュース */
 export interface TaxNews {
   id: string;
@@ -40,6 +43,7 @@ export interface TaxNews {
   body: string;
   published_at: string;
   important: boolean;
+  target: NewsTarget[];
 }
 
 /** GitHub JSONのルート構造 */

@@ -70,6 +70,26 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="chart"
+        options={{
+          title: 'グラフ',
+          headerTitle: '月次グラフ',
+          tabBarIcon: ({ color }) => (
+            <Feather name="bar-chart-2" size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="news"
+        options={{
+          title: 'ニュース',
+          headerTitle: '税制ニュース',
+          tabBarIcon: ({ color }) => (
+            <Feather name="bell" size={22} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

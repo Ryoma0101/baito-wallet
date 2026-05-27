@@ -1,0 +1,48 @@
+{
+  "version": "2026",
+  "updated_at": "2026-01-01",
+  "walls": {
+    "income_tax": 1780000,
+    "dependent_general": 1780000,
+    "dependent_specific_age_min": 19,
+    "dependent_specific_age_max": 22,
+    "dependent_specific_limit": 1500000,
+    "social_insurance_basic": 1300000,
+    "social_insurance_large_company": 1060000,
+    "residence_tax_approx": 1100000
+  },
+  "news": [
+    {
+      "id": "2026-reform-178",
+      "title": "178万円の壁が2026年分から適用",
+      "body": "所得税の非課税枠が178万円に拡大されました。ただし社会保険の扶養（130万・150万円）は別制度です。年末調整または確定申告で還付を受けられます。",
+      "published_at": "2026-01-01",
+      "important": true,
+      "target": ["all"]
+    },
+    {
+      "id": "2026-social-insurance-oct",
+      "title": "106万円の壁が2026年10月に撤廃予定",
+      "body": "社会保険の加入要件から賃金要件（月8.8万円）が撤廃されます。週20時間以上勤務の場合は勤務先規模に関わらず加入義務が生じる可能性があります。",
+      "published_at": "2026-04-01",
+      "important": true,
+      "target": ["large_company"]
+    },
+    {
+      "id": "2026-specific-dependent",
+      "title": "特定扶養控除の年収要件が150万円に拡大",
+      "body": "19〜22歳の特定扶養親族の年収要件が従来の103万円から150万円に拡大されました。親の扶養に入りながら、より多く稼ぐことが可能になっています。",
+      "published_at": "2026-01-15",
+      "important": false,
+      "target": ["parent"]
+    },
+    {
+      "id": "2026-spouse-deduction",
+      "title": "配偶者控除の適用上限が178万円に",
+      "body": "配偶者控除・配偶者特別控除の年収上限が178万円に引き上げられました。社会保険の扶養（130万円）とは別の制度ですのでご注意ください。",
+      "published_at": "2026-02-01",
+      "important": false,
+      "target": ["spouse"]
+    }
+  ]
+}

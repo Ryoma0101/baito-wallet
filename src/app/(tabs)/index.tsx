@@ -5,29 +5,35 @@ import {
   StyleSheet,
   ScrollView,
   Animated,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { getUserSettings, getActiveJobs, getAllShifts, getAllPayslips } from '@/lib/db';
 import { fetchTaxRules } from '@/lib/rules';
 import { calcWalls } from '@/lib/tax';
 import { calcRevenue } from '@/lib/revenue';
 import { usePrivacy } from '@/context/PrivacyContext';
-import type { UserSettings, Job, WallResult } from '@/types';
+import type { UserSettings, Job, WallResult, TaxNews } from '@/types';
+
+const NEWS_READ_KEY = 'read_news_ids';
 
 const ACCENT = '#208AEF';
 const BG = '#F5F5F8';
 
 export default function HomeScreen() {
   const { formatYen } = usePrivacy();
+  const router = useRouter();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [walls, setWalls] = useState<WallResult['walls']>([]);
   const [primaryWall, setPrimaryWall] = useState<{ label: string; amount: number } | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [currentYearIncome, setCurrentYearIncome] = useState(0);
   const [progressAnim] = useState(new Animated.Value(0));
+  const [unreadNews, setUnreadNews] = useState<TaxNews[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -71,9 +77,51 @@ export default function HomeScreen() {
         duration: 1000,
         useNativeDriver: false,
       }).start();
+
+      // 未読ニュースの確認
+      await loadUnreadNews(taxRules.news || [], userSettings);
     } catch (error) {
       // エラーハンドリング
     }
+  }
+
+  async function loadUnreadNews(news: TaxNews[], userSettings: UserSettings) {
+    try {
+      const readIdsRaw = await AsyncStorage.getItem(NEWS_READ_KEY);
+      const readIds: string[] = readIdsRaw ? JSON.parse(readIdsRaw) : [];
+
+      const importantUnread = news.filter((n) => {
+        if (!n.important) return false;
+        if (readIds.includes(n.id)) return false;
+        // Check target relevance
+        if (!n.target || n.target.length === 0 || n.target.includes('all')) return true;
+        for (const t of n.target) {
+          if (t === 'large_company' && userSettings.large_company) return true;
+          if (t === 'parent' && userSettings.dependent_type === 'parent') return true;
+          if (t === 'spouse' && userSettings.dependent_type === 'spouse') return true;
+        }
+        return false;
+      });
+      setUnreadNews(importantUnread);
+    } catch {
+      setUnreadNews([]);
+    }
+  }
+
+  async function handleBannerPress() {
+    // Mark all unread important news as read
+    try {
+      const readIdsRaw = await AsyncStorage.getItem(NEWS_READ_KEY);
+      const readIds: string[] = readIdsRaw ? JSON.parse(readIdsRaw) : [];
+      const newIds = unreadNews.map((n) => n.id);
+      const merged = [...new Set([...readIds, ...newIds])];
+      await AsyncStorage.setItem(NEWS_READ_KEY, JSON.stringify(merged));
+      setUnreadNews([]);
+    } catch {
+      // ignore
+    }
+    // Navigate to news tab
+    router.push('/(tabs)/news');
   }
 
   if (!settings || !primaryWall) {
@@ -112,6 +160,19 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* 未読ニュースバナー */}
+        {unreadNews.length > 0 && (
+          <TouchableOpacity style={styles.newsBanner} onPress={handleBannerPress}>
+            <View style={styles.newsBannerLeft}>
+              <Feather name="bell" size={18} color="#FFF" />
+              <Text style={styles.newsBannerText}>
+                {unreadNews.length}件の重要なお知らせがあります
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color="#FFF" />
+          </TouchableOpacity>
+        )}
+
         {/* メインカード: 残り枠 */}
         <View style={styles.mainCard}>
           <Text style={styles.mainCardLabel}>
@@ -417,5 +478,33 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: '#F0F0F0',
+  },
+
+  // ニュースバナー
+  newsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FF9500',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    shadowColor: '#FF9500',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  newsBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  newsBannerText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+    flex: 1,
   },
 });
