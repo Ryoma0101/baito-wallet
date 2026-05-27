@@ -10,79 +10,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 
-import { getUserSettings, getActiveJobs } from '@/lib/db';
+import { getUserSettings, getActiveJobs, getAllShifts, getAllPayslips } from '@/lib/db';
 import { fetchTaxRules } from '@/lib/rules';
-import type { UserSettings, WallResult, WallValues, Job } from '@/types';
+import { calcWalls } from '@/lib/tax';
+import { calcRevenue } from '@/lib/revenue';
+import type { UserSettings, Job, WallResult } from '@/types';
 
 const ACCENT = '#208AEF';
-
-/**
- * ユーザー設定と壁の値から適用される壁のリストを取得する。
- * フェーズ1の簡易判定（lib/tax.tsが未実装のため）。
- * 複数の壁がある場合は最も低い壁が基準。
- */
-function getApplicableWalls(
-  settings: UserSettings,
-  walls: WallValues,
-): WallResult[] {
-  const results: WallResult[] = [];
-
-  // 所得税の壁は全員に適用
-  results.push({
-    name: '所得税非課税枠',
-    amount: walls.income_tax,
-    description: '年収がこの額を超えると所得税が発生します',
-  });
-
-  if (settings.dependent_type === 'parent') {
-    // 年齢判定（簡易版: 生年月日から現在年齢を計算）
-    const age = calcAge(settings.birth_date);
-
-    if (age >= walls.dependent_specific_age_min && age <= walls.dependent_specific_age_max) {
-      // 特定扶養（19〜22歳）
-      results.push({
-        name: '特定扶養控除',
-        amount: walls.dependent_specific_limit,
-        description: '親の特定扶養控除が受けられる上限額です',
-      });
-    } else {
-      // 一般扶養
-      results.push({
-        name: '社会保険の扶養',
-        amount: walls.social_insurance_basic,
-        description: '社会保険の扶養から外れる上限額です',
-      });
-    }
-  } else if (settings.dependent_type === 'spouse') {
-    results.push({
-      name: '社会保険の扶養',
-      amount: walls.social_insurance_basic,
-      description: '配偶者の社会保険扶養から外れる上限額です',
-    });
-  }
-
-  // 大企業の106万の壁
-  if (settings.large_company) {
-    results.push({
-      name: '大企業の社保壁',
-      amount: walls.social_insurance_large_company,
-      description: '大企業では106万円を超えると社会保険加入義務があります',
-    });
-  }
-
-  return results;
-}
-
-function calcAge(birthDateStr: string): number {
-  const today = new Date();
-  const birth = new Date(birthDateStr);
-  let age = today.getFullYear() - birth.getFullYear();
-  const monthDiff = today.getMonth() - birth.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-    age--;
-  }
-  return age;
-}
 
 function formatYen(amount: number): string {
   if (amount >= 10_000) {
@@ -98,13 +32,11 @@ function formatYen(amount: number): string {
 
 export default function HomeScreen() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
-  const [walls, setWalls] = useState<WallResult[]>([]);
-  const [lowestWall, setLowestWall] = useState<WallResult | null>(null);
+  const [walls, setWalls] = useState<WallResult['walls']>([]);
+  const [primaryWall, setPrimaryWall] = useState<{ label: string; amount: number } | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [currentYearIncome, setCurrentYearIncome] = useState(0);
   const [progressAnim] = useState(new Animated.Value(0));
-
-  // フェーズ1: 今年の収入はダミー値（0）。lib/revenue.ts 実装時に置き換える
-  const currentYearIncome = 0;
 
   useFocusEffect(
     useCallback(() => {
@@ -114,10 +46,12 @@ export default function HomeScreen() {
 
   async function loadData() {
     try {
-      const [userSettings, taxRules, activeJobs] = await Promise.all([
+      const [userSettings, taxRules, activeJobs, allShifts, allPayslips] = await Promise.all([
         getUserSettings(),
         fetchTaxRules(),
         getActiveJobs(),
+        getAllShifts(),
+        getAllPayslips(),
       ]);
 
       if (!userSettings) return;
@@ -125,30 +59,33 @@ export default function HomeScreen() {
       setSettings(userSettings);
       setJobs(activeJobs);
 
-      const applicableWalls = getApplicableWalls(userSettings, taxRules.walls);
-      setWalls(applicableWalls);
+      // 壁の判定
+      const wallResult = calcWalls(userSettings, taxRules);
+      setWalls(wallResult.walls);
+      setPrimaryWall({
+        label: wallResult.primary_label,
+        amount: wallResult.primary_wall,
+      });
 
-      // 最も低い壁を基準にする
-      const lowest = applicableWalls.reduce((min, wall) =>
-        wall.amount < min.amount ? wall : min,
-        applicableWalls[0],
-      );
-      setLowestWall(lowest);
+      // 収入の集計
+      const revenue = calcRevenue(userSettings, activeJobs, allShifts, allPayslips);
+      const totalFromWork = revenue.annual_total - userSettings.carryover_income;
+      setCurrentYearIncome(totalFromWork);
 
       // プログレスバーのアニメーション
-      const totalIncome = userSettings.carryover_income + currentYearIncome;
-      const progress = lowest ? Math.min(totalIncome / lowest.amount, 1) : 0;
+      const totalIncome = revenue.annual_total;
+      const progress = wallResult.primary_wall > 0 ? Math.min(totalIncome / wallResult.primary_wall, 1) : 0;
       Animated.timing(progressAnim, {
         toValue: progress,
         duration: 1000,
         useNativeDriver: false,
       }).start();
     } catch (error) {
-      // エラーハンドリング（フェーズ1は最小限）
+      // エラーハンドリング
     }
   }
 
-  if (!settings || !lowestWall) {
+  if (!settings || !primaryWall) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -159,8 +96,8 @@ export default function HomeScreen() {
   }
 
   const totalIncome = settings.carryover_income + currentYearIncome;
-  const remainingAmount = Math.max(lowestWall.amount - totalIncome, 0);
-  const progressPercent = Math.min((totalIncome / lowestWall.amount) * 100, 100);
+  const remainingAmount = Math.max(primaryWall.amount - totalIncome, 0);
+  const progressPercent = Math.min((totalIncome / primaryWall.amount) * 100, 100);
 
   // 平均時給の計算
   const averageHourlyWage = jobs.length > 0
@@ -187,13 +124,13 @@ export default function HomeScreen() {
         {/* メインカード: 残り枠 */}
         <View style={styles.mainCard}>
           <Text style={styles.mainCardLabel}>
-            {lowestWall.name}まで残り
+            {primaryWall.label}まで残り
           </Text>
           <Text style={styles.mainCardAmount}>
             {formatYen(remainingAmount)}
           </Text>
           <Text style={styles.mainCardSub}>
-            基準: {formatYen(lowestWall.amount)}
+            基準: {formatYen(primaryWall.amount)}
           </Text>
 
           {/* ゲージ */}
@@ -242,7 +179,8 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>適用される壁</Text>
           {walls.map((wall, index) => {
             const wallProgress = Math.min((totalIncome / wall.amount) * 100, 100);
-            const isLowest = wall === lowestWall;
+            // 金額がprimaryWallと同じならハイライト
+            const isLowest = wall.amount === primaryWall.amount;
             return (
               <View
                 key={index}
@@ -251,7 +189,7 @@ export default function HomeScreen() {
                 <View style={styles.wallCardHeader}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     {isLowest && <Feather name="star" size={14} color="#FF9500" />}
-                    <Text style={styles.wallName}>{wall.name}</Text>
+                    <Text style={styles.wallName}>{wall.label}</Text>
                   </View>
                   <Text style={styles.wallAmount}>{formatYen(wall.amount)}</Text>
                 </View>
