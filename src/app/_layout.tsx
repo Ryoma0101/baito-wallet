@@ -5,6 +5,7 @@ import { useColorScheme } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 
 import { initDB, getUserSettings } from '@/lib/db';
+import { PrivacyProvider } from '@/context/PrivacyContext';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -34,10 +35,12 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="onboarding/index" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
+      <PrivacyProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="onboarding/index" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </PrivacyProvider>
       <StatusBar style="auto" />
     </ThemeProvider>
   );

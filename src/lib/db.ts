@@ -56,6 +56,31 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 2,
+    description: 'フェーズ3拡張カラムの追加',
+    up: async (database) => {
+      await database.execAsync(`
+        ALTER TABLE jobs ADD COLUMN transportation_allowance INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE payslips ADD COLUMN taxable_amount INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE payslips ADD COLUMN non_taxable_amount INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE payslips ADD COLUMN image_uri TEXT;
+      `);
+      // 初期データとして existing actual_amount を taxable_amount にコピー
+      await database.execAsync(`
+        UPDATE payslips SET taxable_amount = actual_amount;
+      `);
+    },
+  },
+  {
+    version: 3,
+    description: 'shiftsにtransportation_allowance追加',
+    up: async (database) => {
+      await database.execAsync(`
+        ALTER TABLE shifts ADD COLUMN transportation_allowance INTEGER NOT NULL DEFAULT 0;
+      `);
+    },
+  },
 ];
 
 // ============================================================
@@ -176,6 +201,7 @@ export async function getActiveJobs(): Promise<Job[]> {
     hourly_wage: number;
     employment_type: string;
     is_active: number;
+    transportation_allowance: number;
   }>('SELECT * FROM jobs WHERE is_active = 1');
 
   return rows.map((row) => ({
@@ -184,6 +210,7 @@ export async function getActiveJobs(): Promise<Job[]> {
     hourly_wage: row.hourly_wage,
     employment_type: row.employment_type as Job['employment_type'],
     is_active: row.is_active === 1,
+    transportation_allowance: row.transportation_allowance || 0,
   }));
 }
 
@@ -195,6 +222,7 @@ export async function getAllJobs(): Promise<Job[]> {
     hourly_wage: number;
     employment_type: string;
     is_active: number;
+    transportation_allowance: number;
   }>('SELECT * FROM jobs ORDER BY is_active DESC, id DESC');
 
   return rows.map((row) => ({
@@ -203,22 +231,23 @@ export async function getAllJobs(): Promise<Job[]> {
     hourly_wage: row.hourly_wage,
     employment_type: row.employment_type as Job['employment_type'],
     is_active: row.is_active === 1,
+    transportation_allowance: row.transportation_allowance || 0,
   }));
 }
 
 export async function addJob(job: Omit<Job, 'id'>): Promise<void> {
   const database = getDB();
   await database.runAsync(
-    'INSERT INTO jobs (name, hourly_wage, employment_type, is_active) VALUES (?, ?, ?, ?)',
-    [job.name, job.hourly_wage, job.employment_type, job.is_active ? 1 : 0]
+    'INSERT INTO jobs (name, hourly_wage, employment_type, is_active, transportation_allowance) VALUES (?, ?, ?, ?, ?)',
+    [job.name, job.hourly_wage, job.employment_type, job.is_active ? 1 : 0, job.transportation_allowance]
   );
 }
 
 export async function updateJob(job: Job): Promise<void> {
   const database = getDB();
   await database.runAsync(
-    'UPDATE jobs SET name = ?, hourly_wage = ?, employment_type = ?, is_active = ? WHERE id = ?',
-    [job.name, job.hourly_wage, job.employment_type, job.is_active ? 1 : 0, job.id]
+    'UPDATE jobs SET name = ?, hourly_wage = ?, employment_type = ?, is_active = ?, transportation_allowance = ? WHERE id = ?',
+    [job.name, job.hourly_wage, job.employment_type, job.is_active ? 1 : 0, job.transportation_allowance, job.id]
   );
 }
 
@@ -239,16 +268,16 @@ export async function getAllShifts(): Promise<import('@/types').Shift[]> {
 export async function addShift(shift: Omit<import('@/types').Shift, 'id'>): Promise<void> {
   const database = getDB();
   await database.runAsync(
-    'INSERT INTO shifts (job_id, date, start_time, end_time, break_minutes, estimated_wage) VALUES (?, ?, ?, ?, ?, ?)',
-    [shift.job_id, shift.date, shift.start_time, shift.end_time, shift.break_minutes, shift.estimated_wage]
+    'INSERT INTO shifts (job_id, date, start_time, end_time, break_minutes, estimated_wage, transportation_allowance) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [shift.job_id, shift.date, shift.start_time, shift.end_time, shift.break_minutes, shift.estimated_wage, shift.transportation_allowance]
   );
 }
 
 export async function updateShift(shift: import('@/types').Shift): Promise<void> {
   const database = getDB();
   await database.runAsync(
-    'UPDATE shifts SET job_id = ?, date = ?, start_time = ?, end_time = ?, break_minutes = ?, estimated_wage = ? WHERE id = ?',
-    [shift.job_id, shift.date, shift.start_time, shift.end_time, shift.break_minutes, shift.estimated_wage, shift.id]
+    'UPDATE shifts SET job_id = ?, date = ?, start_time = ?, end_time = ?, break_minutes = ?, estimated_wage = ?, transportation_allowance = ? WHERE id = ?',
+    [shift.job_id, shift.date, shift.start_time, shift.end_time, shift.break_minutes, shift.estimated_wage, shift.transportation_allowance, shift.id]
   );
 }
 
@@ -269,16 +298,16 @@ export async function getAllPayslips(): Promise<import('@/types').Payslip[]> {
 export async function addPayslip(payslip: Omit<import('@/types').Payslip, 'id'>): Promise<void> {
   const database = getDB();
   await database.runAsync(
-    'INSERT INTO payslips (job_id, year, month, actual_amount) VALUES (?, ?, ?, ?)',
-    [payslip.job_id, payslip.year, payslip.month, payslip.actual_amount]
+    'INSERT INTO payslips (job_id, year, month, actual_amount, taxable_amount, non_taxable_amount, image_uri) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [payslip.job_id, payslip.year, payslip.month, payslip.actual_amount, payslip.taxable_amount, payslip.non_taxable_amount, payslip.image_uri]
   );
 }
 
 export async function updatePayslip(payslip: import('@/types').Payslip): Promise<void> {
   const database = getDB();
   await database.runAsync(
-    'UPDATE payslips SET job_id = ?, year = ?, month = ?, actual_amount = ? WHERE id = ?',
-    [payslip.job_id, payslip.year, payslip.month, payslip.actual_amount, payslip.id]
+    'UPDATE payslips SET job_id = ?, year = ?, month = ?, actual_amount = ?, taxable_amount = ?, non_taxable_amount = ?, image_uri = ? WHERE id = ?',
+    [payslip.job_id, payslip.year, payslip.month, payslip.actual_amount, payslip.taxable_amount, payslip.non_taxable_amount, payslip.image_uri, payslip.id]
   );
 }
 

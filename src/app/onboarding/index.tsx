@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import DateTimePicker, {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { saveUserSettings } from '@/lib/db';
+import { saveUserSettings, getUserSettings, initDB } from '@/lib/db';
 import type { DependentType, UserSettings } from '@/types';
 
 type Step = 'birth_date' | 'dependent_type' | 'large_company' | 'carryover_income';
@@ -46,6 +46,26 @@ export default function OnboardingScreen() {
   const [dependentType, setDependentType] = useState<DependentType>('parent');
   const [largeCompany, setLargeCompany] = useState(false);
   const [carryoverIncome, setCarryoverIncome] = useState('0');
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        await initDB();
+        const existing = await getUserSettings();
+        if (existing) {
+          setIsEditing(true);
+          setBirthDate(new Date(existing.birth_date));
+          setDependentType(existing.dependent_type);
+          setLargeCompany(existing.large_company);
+          setCarryoverIncome(existing.carryover_income.toString());
+        }
+      } catch (e) {
+        console.warn('DB not ready or error loading settings', e);
+      }
+    }
+    load();
+  }, []);
 
   const currentStep = STEPS[currentStepIndex];
   const isLastStep = currentStepIndex === STEPS.length - 1;
@@ -253,7 +273,7 @@ export default function OnboardingScreen() {
             onPress={handleNext}
           >
             <Text style={styles.nextButtonText}>
-              {isLastStep ? '始める' : '次へ'}
+              {isLastStep ? (isEditing ? '保存する' : '始める') : '次へ'}
             </Text>
           </TouchableOpacity>
         </View>

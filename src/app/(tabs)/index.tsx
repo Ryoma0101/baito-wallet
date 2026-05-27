@@ -14,23 +14,14 @@ import { getUserSettings, getActiveJobs, getAllShifts, getAllPayslips } from '@/
 import { fetchTaxRules } from '@/lib/rules';
 import { calcWalls } from '@/lib/tax';
 import { calcRevenue } from '@/lib/revenue';
+import { usePrivacy } from '@/context/PrivacyContext';
 import type { UserSettings, Job, WallResult } from '@/types';
 
 const ACCENT = '#208AEF';
-
-function formatYen(amount: number): string {
-  if (amount >= 10_000) {
-    const man = Math.floor(amount / 10_000);
-    const remainder = amount % 10_000;
-    if (remainder === 0) {
-      return `${man.toLocaleString()}万円`;
-    }
-    return `${amount.toLocaleString()}円`;
-  }
-  return `${amount.toLocaleString()}円`;
-}
+const BG = '#F5F5F8';
 
 export default function HomeScreen() {
+  const { formatYen } = usePrivacy();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [walls, setWalls] = useState<WallResult['walls']>([]);
   const [primaryWall, setPrimaryWall] = useState<{ label: string; amount: number } | null>(null);

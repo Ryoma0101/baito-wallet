@@ -1,10 +1,12 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Modal, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
+import { CurrencyInput } from '@/components/CurrencyInput';
+import { usePrivacy } from '@/context/PrivacyContext';
 import { getAllShifts, addShift, updateShift, deleteShift, getActiveJobs } from '@/lib/db';
 import type { Shift, Job } from '@/types';
 
@@ -21,11 +23,8 @@ function parseHHMMtoToday(timeStr: string) {
   return d;
 }
 
-function formatYen(amount: number) {
-  return `${amount.toLocaleString()}円`;
-}
-
 export default function ShiftsScreen() {
+  const { formatYen } = usePrivacy();
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -37,10 +36,13 @@ export default function ShiftsScreen() {
   const [startTime, setStartTime] = useState(new Date(new Date().setHours(10, 0, 0, 0)));
   const [endTime, setEndTime] = useState(new Date(new Date().setHours(15, 0, 0, 0)));
   const [breakMinutes, setBreakMinutes] = useState('0');
+  const [estimatedWageStr, setEstimatedWageStr] = useState('0');
+  const [transportationStr, setTransportationStr] = useState('0');
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [showTimeModal, setShowTimeModal] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -69,6 +71,8 @@ export default function ShiftsScreen() {
     setStartTime(new Date(new Date().setHours(10, 0, 0, 0)));
     setEndTime(new Date(new Date().setHours(15, 0, 0, 0)));
     setBreakMinutes('0');
+    setEstimatedWageStr('0');
+    setTransportationStr('0');
     setModalVisible(true);
   }
 
@@ -79,25 +83,34 @@ export default function ShiftsScreen() {
     setStartTime(parseHHMMtoToday(shift.start_time));
     setEndTime(parseHHMMtoToday(shift.end_time));
     setBreakMinutes(shift.break_minutes.toString());
+    setEstimatedWageStr(shift.estimated_wage.toString());
+    setTransportationStr((shift.transportation_allowance || 0).toString());
     setModalVisible(true);
   }
 
-  const estimatedWage = useMemo(() => {
-    if (!jobId) return 0;
+  const calculatedWage = useMemo(() => {
+    if (!jobId) return { wage: 0, trans: 0 };
     const job = jobs.find(j => j.id === jobId);
-    if (!job) return 0;
+    if (!job) return { wage: 0, trans: 0 };
 
     let diffMs = endTime.getTime() - startTime.getTime();
     if (diffMs < 0) {
-      // 日をまたぐ場合
       diffMs += 24 * 60 * 60 * 1000;
     }
     let workMinutes = Math.floor(diffMs / 60000);
     const breakMin = parseInt(breakMinutes, 10) || 0;
     workMinutes = Math.max(0, workMinutes - breakMin);
 
-    return Math.round((workMinutes / 60) * job.hourly_wage);
+    const baseWage = Math.round((workMinutes / 60) * job.hourly_wage);
+    return { wage: baseWage, trans: job.transportation_allowance || 0 };
   }, [jobId, jobs, startTime, endTime, breakMinutes]);
+
+  React.useEffect(() => {
+    if (!editingShift) {
+      setEstimatedWageStr(calculatedWage.wage.toString());
+      setTransportationStr(calculatedWage.trans.toString());
+    }
+  }, [calculatedWage, editingShift]);
 
   async function handleSave() {
     if (!jobId) return;
@@ -109,7 +122,8 @@ export default function ShiftsScreen() {
         start_time: toHHMM(startTime),
         end_time: toHHMM(endTime),
         break_minutes: parseInt(breakMinutes, 10) || 0,
-        estimated_wage: estimatedWage,
+        estimated_wage: parseInt(estimatedWageStr, 10) || 0,
+        transportation_allowance: parseInt(transportationStr, 10) || 0,
       };
 
       if (editingShift) {
@@ -142,9 +156,34 @@ export default function ShiftsScreen() {
     ]);
   }
 
+  const currentMonthShifts = useMemo(() => {
+    const prefix = new Date().toISOString().substring(0, 7);
+    return shifts.filter(s => s.date.startsWith(prefix));
+  }, [shifts]);
+
+  const summary = useMemo(() => {
+    let wage = 0;
+    let trans = 0;
+    currentMonthShifts.forEach(s => {
+      wage += s.estimated_wage;
+      trans += s.transportation_allowance || 0;
+    });
+    return { wage, trans, total: wage + trans };
+  }, [currentMonthShifts]);
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.listContainer}>
+        
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryTitle}>今月（{new Date().getMonth() + 1}月）の見込み給与</Text>
+          <Text style={styles.summaryTotal}>{formatYen(summary.total)}</Text>
+          <View style={styles.summaryDetails}>
+            <Text style={styles.summaryDetailText}>課税対象額（給与）: {formatYen(summary.wage)}</Text>
+            <Text style={styles.summaryDetailText}>非課税（交通費）: {formatYen(summary.trans)}</Text>
+          </View>
+        </View>
+
         {shifts.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>登録されているシフトはありません</Text>
@@ -168,7 +207,10 @@ export default function ShiftsScreen() {
                       {shift.break_minutes > 0 ? ` (休憩${shift.break_minutes}分)` : ''}
                     </Text>
                   </View>
-                  <Text style={styles.wageText}>見込み: {formatYen(shift.estimated_wage)}</Text>
+                  <Text style={styles.wageText}>見込み: {formatYen(shift.estimated_wage + (shift.transportation_allowance || 0))}</Text>
+                  {shift.transportation_allowance > 0 && (
+                    <Text style={styles.wageSubText}>うち交通費: {formatYen(shift.transportation_allowance)}</Text>
+                  )}
                 </View>
                 <View style={styles.cardActions}>
                   <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModal(shift)}>
@@ -223,20 +265,35 @@ export default function ShiftsScreen() {
             {/* 日付 */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>日付</Text>
-              <TouchableOpacity style={styles.pickerBtn} onPress={() => setShowDatePicker(true)}>
-                <Text style={styles.pickerBtnText}>{date.toISOString().split('T')[0]}</Text>
-                <Feather name="calendar" size={18} color="#666" />
-              </TouchableOpacity>
-              {showDatePicker && (
-                <DateTimePicker
-                  value={date}
-                  mode="date"
-                  display="spinner"
-                  onChange={(event, selectedDate) => {
-                    setShowDatePicker(false);
-                    if (selectedDate) setDate(selectedDate);
-                  }}
-                />
+              {Platform.OS === 'android' ? (
+                <>
+                  <TouchableOpacity style={styles.pickerBtn} onPress={() => setShowDatePicker(true)}>
+                    <Text style={styles.pickerBtnText}>{date.toISOString().split('T')[0]}</Text>
+                    <Feather name="calendar" size={18} color="#666" />
+                  </TouchableOpacity>
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={date}
+                      mode="date"
+                      display="calendar"
+                      onChange={(event, selectedDate) => {
+                        setShowDatePicker(false);
+                        if (selectedDate) setDate(selectedDate);
+                      }}
+                    />
+                  )}
+                </>
+              ) : (
+                <View style={styles.iosCalendarContainer}>
+                  <DateTimePicker
+                    value={date}
+                    mode="date"
+                    display="inline"
+                    onChange={(event, selectedDate) => {
+                      if (selectedDate) setDate(selectedDate);
+                    }}
+                  />
+                </View>
               )}
             </View>
 
@@ -244,14 +301,17 @@ export default function ShiftsScreen() {
             <View style={styles.timeGroup}>
               <View style={[styles.inputGroup, { flex: 1 }]}>
                 <Text style={styles.label}>開始時間</Text>
-                <TouchableOpacity style={styles.pickerBtn} onPress={() => setShowStartTimePicker(true)}>
+                <TouchableOpacity 
+                  style={styles.pickerBtn} 
+                  onPress={() => Platform.OS === 'ios' ? setShowTimeModal(true) : setShowStartTimePicker(true)}
+                >
                   <Text style={styles.pickerBtnText}>{toHHMM(startTime)}</Text>
                 </TouchableOpacity>
-                {showStartTimePicker && (
+                {Platform.OS === 'android' && showStartTimePicker && (
                   <DateTimePicker
                     value={startTime}
                     mode="time"
-                    display="spinner"
+                    display="default"
                     onChange={(event, selectedTime) => {
                       setShowStartTimePicker(false);
                       if (selectedTime) setStartTime(selectedTime);
@@ -262,14 +322,17 @@ export default function ShiftsScreen() {
 
               <View style={[styles.inputGroup, { flex: 1 }]}>
                 <Text style={styles.label}>終了時間</Text>
-                <TouchableOpacity style={styles.pickerBtn} onPress={() => setShowEndTimePicker(true)}>
+                <TouchableOpacity 
+                  style={styles.pickerBtn} 
+                  onPress={() => Platform.OS === 'ios' ? setShowTimeModal(true) : setShowEndTimePicker(true)}
+                >
                   <Text style={styles.pickerBtnText}>{toHHMM(endTime)}</Text>
                 </TouchableOpacity>
-                {showEndTimePicker && (
+                {Platform.OS === 'android' && showEndTimePicker && (
                   <DateTimePicker
                     value={endTime}
                     mode="time"
-                    display="spinner"
+                    display="default"
                     onChange={(event, selectedTime) => {
                       setShowEndTimePicker(false);
                       if (selectedTime) setEndTime(selectedTime);
@@ -290,13 +353,71 @@ export default function ShiftsScreen() {
             </View>
 
             <View style={styles.estimateCard}>
-              <Text style={styles.estimateLabel}>見込み給与（自動計算）</Text>
-              <Text style={styles.estimateValue}>{formatYen(estimatedWage)}</Text>
+              <Text style={styles.estimateLabel}>見込み給与（課税対象額・手動補正可）</Text>
+              <View style={styles.estimateInputContainer}>
+                <Text style={styles.currencySymbol}>¥</Text>
+                <CurrencyInput
+                  style={styles.estimateInput}
+                  value={estimatedWageStr}
+                  onChangeValue={setEstimatedWageStr}
+                />
+              </View>
+            </View>
+
+            <View style={styles.estimateCard}>
+              <Text style={styles.estimateLabel}>交通費（非課税・手動補正可）</Text>
+              <View style={styles.estimateInputContainer}>
+                <Text style={styles.currencySymbol}>¥</Text>
+                <CurrencyInput
+                  style={styles.estimateInput}
+                  value={transportationStr}
+                  onChangeValue={setTransportationStr}
+                />
+              </View>
             </View>
 
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      {/* iOS Time Modal */}
+      {Platform.OS === 'ios' && (
+        <Modal visible={showTimeModal} animationType="slide" transparent={true}>
+          <View style={styles.timeModalOverlay}>
+            <View style={styles.timeModalContent}>
+              <View style={styles.timeModalHeader}>
+                <TouchableOpacity onPress={() => setShowTimeModal(false)}>
+                  <Text style={styles.timeModalDone}>完了</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.timeModalBody}>
+                <View style={styles.timeModalRow}>
+                  <Text style={styles.timeModalLabel}>開始時間</Text>
+                  <DateTimePicker
+                    value={startTime}
+                    mode="time"
+                    display="spinner"
+                    themeVariant="light"
+                    onChange={(e, d) => d && setStartTime(d)}
+                    style={{ flex: 1, height: 120 }}
+                  />
+                </View>
+                <View style={styles.timeModalRow}>
+                  <Text style={styles.timeModalLabel}>終了時間</Text>
+                  <DateTimePicker
+                    value={endTime}
+                    mode="time"
+                    display="spinner"
+                    themeVariant="light"
+                    onChange={(e, d) => d && setEndTime(d)}
+                    style={{ flex: 1, height: 120 }}
+                  />
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -370,6 +491,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#1A1A1A',
+  },
+  wageSubText: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
   },
   cardActions: {
     flexDirection: 'row',
@@ -505,11 +631,102 @@ const styles = StyleSheet.create({
   estimateLabel: {
     fontSize: 13,
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  estimateValue: {
+  estimateInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  currencySymbol: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#666',
+    marginRight: 4,
+  },
+  estimateInput: {
     fontSize: 24,
     fontWeight: '700',
     color: ACCENT,
+    minWidth: 100,
+    textAlign: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#CCC',
+  },
+  iosCalendarContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  summaryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#EAF4FE',
+  },
+  summaryTitle: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  summaryTotal: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: ACCENT,
+    marginBottom: 12,
+  },
+  summaryDetails: {
+    backgroundColor: '#F5F5F8',
+    padding: 12,
+    borderRadius: 8,
+    gap: 4,
+  },
+  summaryDetailText: {
+    fontSize: 13,
+    color: '#555',
+  },
+  timeModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  timeModalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 40,
+  },
+  timeModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  timeModalDone: {
+    color: ACCENT,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  timeModalBody: {
+    padding: 16,
+  },
+  timeModalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  timeModalLabel: {
+    width: 80,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
   }
 });

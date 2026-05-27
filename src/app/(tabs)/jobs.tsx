@@ -6,6 +6,7 @@ import { Feather } from '@expo/vector-icons';
 
 import { getAllJobs, addJob, updateJob, deleteJob } from '@/lib/db';
 import type { Job } from '@/types';
+import { CurrencyInput } from '@/components/CurrencyInput';
 
 const ACCENT = '#208AEF';
 
@@ -17,6 +18,7 @@ export default function JobsScreen() {
   // Form state
   const [name, setName] = useState('');
   const [hourlyWage, setHourlyWage] = useState('');
+  const [transportationAllowance, setTransportationAllowance] = useState('0');
   const [employmentType, setEmploymentType] = useState<Job['employment_type']>('part');
   const [isActive, setIsActive] = useState(true);
 
@@ -39,6 +41,7 @@ export default function JobsScreen() {
     setEditingJob(null);
     setName('');
     setHourlyWage('');
+    setTransportationAllowance('0');
     setEmploymentType('part');
     setIsActive(true);
     setModalVisible(true);
@@ -48,6 +51,7 @@ export default function JobsScreen() {
     setEditingJob(job);
     setName(job.name);
     setHourlyWage(job.hourly_wage.toString());
+    setTransportationAllowance(job.transportation_allowance.toString());
     setEmploymentType(job.employment_type);
     setIsActive(job.is_active);
     setModalVisible(true);
@@ -59,6 +63,7 @@ export default function JobsScreen() {
       return;
     }
     const wage = parseInt(hourlyWage, 10);
+    const trans = parseInt(transportationAllowance, 10) || 0;
     if (isNaN(wage) || wage <= 0) {
       Alert.alert('エラー', '正しい時給を入力してください');
       return;
@@ -72,6 +77,7 @@ export default function JobsScreen() {
           hourly_wage: wage,
           employment_type: employmentType,
           is_active: isActive,
+          transportation_allowance: trans,
         });
       } else {
         await addJob({
@@ -79,6 +85,7 @@ export default function JobsScreen() {
           hourly_wage: wage,
           employment_type: employmentType,
           is_active: isActive,
+          transportation_allowance: trans,
         });
       }
       setModalVisible(false);
@@ -129,6 +136,9 @@ export default function JobsScreen() {
                 <Text style={styles.jobDetail}>
                   雇用形態: {job.employment_type === 'part' ? 'パート・バイト' : job.employment_type === 'dispatch' ? '派遣' : 'その他'}
                 </Text>
+                {job.transportation_allowance > 0 && (
+                  <Text style={styles.jobDetail}>交通費: {job.transportation_allowance.toLocaleString()}円 / 回</Text>
+                )}
               </View>
               <View style={styles.jobActions}>
                 <TouchableOpacity style={styles.actionBtn} onPress={() => openEditModal(job)}>
@@ -175,12 +185,21 @@ export default function JobsScreen() {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>時給（円）</Text>
-              <TextInput
+              <CurrencyInput
                 style={styles.input}
                 value={hourlyWage}
-                onChangeText={setHourlyWage}
-                keyboardType="number-pad"
+                onChangeValue={setHourlyWage}
                 placeholder="例：1100"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>交通費（1出勤あたり・円）</Text>
+              <CurrencyInput
+                style={styles.input}
+                value={transportationAllowance}
+                onChangeValue={setTransportationAllowance}
+                placeholder="例：500"
               />
             </View>
 

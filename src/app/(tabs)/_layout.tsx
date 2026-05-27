@@ -1,7 +1,23 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { TouchableOpacity, View } from 'react-native';
+import { usePrivacy } from '@/context/PrivacyContext';
 
 export default function TabLayout() {
+  const router = useRouter();
+  const { privacyMode, togglePrivacyMode } = usePrivacy();
+
+  const HeaderRight = () => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16, gap: 16 }}>
+      <TouchableOpacity onPress={togglePrivacyMode}>
+        <Feather name={privacyMode ? "eye-off" : "eye"} size={22} color="#666" />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => router.push('/onboarding')}>
+        <Feather name="settings" size={22} color="#666" />
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <Tabs
       screenOptions={{
@@ -11,6 +27,7 @@ export default function TabLayout() {
         tabBarStyle: {
           borderTopColor: '#F0F0F0',
         },
+        headerRight: () => <HeaderRight />,
       }}
     >
       <Tabs.Screen

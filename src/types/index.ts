@@ -98,6 +98,7 @@ export interface Job {
   hourly_wage: number;
   employment_type: EmploymentType;
   is_active: boolean;
+  transportation_allowance: number;
 }
 
 /** シフト（shiftsテーブルに対応） */
@@ -109,6 +110,7 @@ export interface Shift {
   end_time: string;       // HH:MM
   break_minutes: number;
   estimated_wage: number;
+  transportation_allowance: number;
 }
 
 /** 給与明細（payslipsテーブルに対応） */
@@ -118,4 +120,7 @@ export interface Payslip {
   year: number;
   month: number;           // 1〜12
   actual_amount: number;
+  taxable_amount: number;
+  non_taxable_amount: number;
+  image_uri: string | null;
 }
