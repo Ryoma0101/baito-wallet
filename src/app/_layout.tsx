@@ -33,6 +33,10 @@ export default function RootLayout() {
     bootstrap();
   }, []);
 
+  if (!isReady) {
+    return null;
+  }
+
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <PrivacyProvider>
