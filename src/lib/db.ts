@@ -19,7 +19,7 @@ const migrations: Migration[] = [
     version: 1,
     description: '初期テーブル作成',
     up: async (database) => {
-      await database.execAsync(`
+      await database.runAsync(`
         CREATE TABLE IF NOT EXISTS user_settings (
           id INTEGER PRIMARY KEY CHECK (id = 1),
           birth_date TEXT NOT NULL,
@@ -27,16 +27,20 @@ const migrations: Migration[] = [
           large_company INTEGER NOT NULL DEFAULT 0,
           carryover_income INTEGER NOT NULL DEFAULT 0,
           plan TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'premium'))
-        );
+        )
+      `);
 
+      await database.runAsync(`
         CREATE TABLE IF NOT EXISTS jobs (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
           hourly_wage INTEGER NOT NULL,
           employment_type TEXT NOT NULL CHECK (employment_type IN ('part', 'dispatch', 'other')),
           is_active INTEGER NOT NULL DEFAULT 1
-        );
+        )
+      `);
 
+      await database.runAsync(`
         CREATE TABLE IF NOT EXISTS shifts (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           job_id INTEGER NOT NULL REFERENCES jobs(id),
@@ -45,15 +49,17 @@ const migrations: Migration[] = [
           end_time TEXT NOT NULL,
           break_minutes INTEGER NOT NULL DEFAULT 0,
           estimated_wage INTEGER NOT NULL DEFAULT 0
-        );
+        )
+      `);
 
+      await database.runAsync(`
         CREATE TABLE IF NOT EXISTS payslips (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           job_id INTEGER NOT NULL REFERENCES jobs(id),
           year INTEGER NOT NULL,
           month INTEGER NOT NULL CHECK (month >= 1 AND month <= 12),
           actual_amount INTEGER NOT NULL
-        );
+        )
       `);
     },
   },
@@ -61,25 +67,19 @@ const migrations: Migration[] = [
     version: 2,
     description: 'フェーズ3拡張カラムの追加',
     up: async (database) => {
-      await database.execAsync(`
-        ALTER TABLE jobs ADD COLUMN transportation_allowance INTEGER NOT NULL DEFAULT 0;
-        ALTER TABLE payslips ADD COLUMN taxable_amount INTEGER NOT NULL DEFAULT 0;
-        ALTER TABLE payslips ADD COLUMN non_taxable_amount INTEGER NOT NULL DEFAULT 0;
-        ALTER TABLE payslips ADD COLUMN image_uri TEXT;
-      `);
+      await database.runAsync('ALTER TABLE jobs ADD COLUMN transportation_allowance INTEGER NOT NULL DEFAULT 0');
+      await database.runAsync('ALTER TABLE payslips ADD COLUMN taxable_amount INTEGER NOT NULL DEFAULT 0');
+      await database.runAsync('ALTER TABLE payslips ADD COLUMN non_taxable_amount INTEGER NOT NULL DEFAULT 0');
+      await database.runAsync('ALTER TABLE payslips ADD COLUMN image_uri TEXT');
       // 初期データとして existing actual_amount を taxable_amount にコピー
-      await database.execAsync(`
-        UPDATE payslips SET taxable_amount = actual_amount;
-      `);
+      await database.runAsync('UPDATE payslips SET taxable_amount = actual_amount');
     },
   },
   {
     version: 3,
     description: 'shiftsにtransportation_allowance追加',
     up: async (database) => {
-      await database.execAsync(`
-        ALTER TABLE shifts ADD COLUMN transportation_allowance INTEGER NOT NULL DEFAULT 0;
-      `);
+      await database.runAsync('ALTER TABLE shifts ADD COLUMN transportation_allowance INTEGER NOT NULL DEFAULT 0');
     },
   },
 ];
@@ -98,11 +98,11 @@ export async function initDB(): Promise<SQLite.SQLiteDatabase> {
   db = await SQLite.openDatabaseAsync('baito-wallet.db');
 
   // マイグレーション管理テーブル
-  await db.execAsync(`
+  await db.runAsync(`
     CREATE TABLE IF NOT EXISTS _migrations (
       version INTEGER PRIMARY KEY,
       applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+    )
   `);
 
   // 適用済みバージョンの取得
@@ -342,11 +342,9 @@ export async function resetAllData(): Promise<void> {
     }
   }
 
-  // 2. Clear all tables (reset ID sequences as well if desired, but DELETE FROM is enough for reset)
-  await database.execAsync(`
-    DELETE FROM payslips;
-    DELETE FROM shifts;
-    DELETE FROM jobs;
-    DELETE FROM user_settings;
-  `);
+  // 2. Clear all tables
+  await database.runAsync('DELETE FROM payslips');
+  await database.runAsync('DELETE FROM shifts');
+  await database.runAsync('DELETE FROM jobs');
+  await database.runAsync('DELETE FROM user_settings');
 }
