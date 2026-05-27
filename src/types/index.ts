@@ -56,12 +56,32 @@ export interface TaxRules {
 
 /** 個別の壁情報 */
 export interface WallResult {
-  /** 壁の名前（表示用） */
-  name: string;
-  /** 壁の金額（円） */
-  amount: number;
-  /** 壁の説明 */
-  description: string;
+  primary_wall: number;
+  primary_label: string;
+  walls: {
+    label: string;
+    amount: number;
+    description: string;
+  }[];
+}
+
+// ============================================================
+// 収入集計結果
+// ============================================================
+
+export interface RevenueResult {
+  annual_total: number;
+  monthly: {
+    year: number;
+    month: number;
+    amount: number;
+    source: 'actual' | 'estimated';
+  }[];
+  by_job: {
+    job_id: number;
+    job_name: string;
+    total: number;
+  }[];
 }
 
 // ============================================================
