@@ -233,7 +233,28 @@ export async function deleteJob(id: number): Promise<void> {
 
 export async function getAllShifts(): Promise<import('@/types').Shift[]> {
   const database = getDB();
-  return await database.getAllAsync<import('@/types').Shift>('SELECT * FROM shifts');
+  return await database.getAllAsync<import('@/types').Shift>('SELECT * FROM shifts ORDER BY date DESC, start_time DESC');
+}
+
+export async function addShift(shift: Omit<import('@/types').Shift, 'id'>): Promise<void> {
+  const database = getDB();
+  await database.runAsync(
+    'INSERT INTO shifts (job_id, date, start_time, end_time, break_minutes, estimated_wage) VALUES (?, ?, ?, ?, ?, ?)',
+    [shift.job_id, shift.date, shift.start_time, shift.end_time, shift.break_minutes, shift.estimated_wage]
+  );
+}
+
+export async function updateShift(shift: import('@/types').Shift): Promise<void> {
+  const database = getDB();
+  await database.runAsync(
+    'UPDATE shifts SET job_id = ?, date = ?, start_time = ?, end_time = ?, break_minutes = ?, estimated_wage = ? WHERE id = ?',
+    [shift.job_id, shift.date, shift.start_time, shift.end_time, shift.break_minutes, shift.estimated_wage, shift.id]
+  );
+}
+
+export async function deleteShift(id: number): Promise<void> {
+  const database = getDB();
+  await database.runAsync('DELETE FROM shifts WHERE id = ?', [id]);
 }
 
 // ============================================================

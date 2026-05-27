@@ -33,6 +33,16 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="shifts"
+        options={{
+          title: 'シフト',
+          headerTitle: 'シフト管理',
+          tabBarIcon: ({ color }) => (
+            <Feather name="calendar" size={22} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
