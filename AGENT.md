@@ -23,24 +23,30 @@ AIエージェントがこのリポジトリで作業する際の指針。必ず
 ## ディレクトリ構成
 
 ```
-app/                    # Expo Router のルート
-  (tabs)/               # タブナビゲーション
-    index.tsx           # ホーム（残り枠・ゲージ）
-    shifts.tsx          # シフト一覧・入力
-    payslips.tsx        # 給与明細
-    settings.tsx        # 設定
-  onboarding/           # オンボーディング（初回のみ）
-    index.tsx
-  _layout.tsx
+src/                      # ソースコード（@/ エイリアスで参照可能）
+  app/                    # Expo Router のルート
+    (tabs)/               # タブナビゲーション
+      _layout.tsx         # タブレイアウト
+      index.tsx           # ホーム（残り枠・ゲージ）
+      shifts.tsx          # シフト一覧・入力
+      payslips.tsx        # 給与明細
+      settings.tsx        # 設定
+    onboarding/           # オンボーディング（初回のみ）
+      index.tsx
+    _layout.tsx           # ルートレイアウト
 
-components/             # 再利用可能なUIコンポーネント
-lib/
-  db.ts                 # SQLite の初期化・マイグレーション
-  tax.ts                # 扶養壁の判定ロジック（純粋関数）
-  revenue.ts            # 収入集計ロジック（見込み・実績の合算）
-  rules.ts              # GitHub JSON のfetch・キャッシュ
-constants/
-  walls.ts              # フォールバック用のデフォルト税制数値
+  components/             # 再利用可能なUIコンポーネント
+  lib/
+    db.ts                 # SQLite の初期化・マイグレーション
+    tax.ts                # 扶養壁の判定ロジック（純粋関数）
+    revenue.ts            # 収入集計ロジック（見込み・実績の合算）
+    rules.ts              # GitHub JSON のfetch・キャッシュ
+  constants/
+    walls.ts              # フォールバック用のデフォルト税制数値
+  types/
+    index.ts              # 共通型定義
+  __tests__/              # ユニットテスト
+    rules.test.ts
 ```
 
 ---
@@ -172,7 +178,7 @@ develop       # 開発の統合ブランチ。各featureはここにマージ
 
 ### テストフレームワーク
 - **Jest + ts-jest**（Expoプロジェクト標準）
-- テストファイルは `__tests__/` ディレクトリに配置
+- テストファイルは `src/__tests__/` ディレクトリに配置
 - ファイル名は `[対象ファイル名].test.ts`
 
 ### テストの書き方
