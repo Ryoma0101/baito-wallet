@@ -16,7 +16,10 @@ import { getUserSettings, getActiveJobs, getAllShifts, getAllPayslips } from '@/
 import { fetchTaxRules } from '@/lib/rules';
 import { calcWalls } from '@/lib/tax';
 import { calcRevenue } from '@/lib/revenue';
+import { calcForecast, ForecastResult } from '@/lib/forecast';
+import { isPremium } from '@/lib/purchases';
 import { usePrivacy } from '@/context/PrivacyContext';
+import PaywallModal from '@/components/PaywallModal';
 import type { UserSettings, Job, WallResult, TaxNews } from '@/types';
 
 const NEWS_READ_KEY = 'read_news_ids';
@@ -25,7 +28,7 @@ const ACCENT = '#208AEF';
 const BG = '#F5F5F8';
 
 export default function HomeScreen() {
-  const { formatYen } = usePrivacy();
+  const { formatYen, privacyMode } = usePrivacy();
   const router = useRouter();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [walls, setWalls] = useState<WallResult['walls']>([]);
@@ -34,6 +37,9 @@ export default function HomeScreen() {
   const [currentYearIncome, setCurrentYearIncome] = useState(0);
   const [progressAnim] = useState(new Animated.Value(0));
   const [unreadNews, setUnreadNews] = useState<TaxNews[]>([]);
+  const [forecast, setForecast] = useState<ForecastResult | null>(null);
+  const [premium, setPremium] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -77,6 +83,20 @@ export default function HomeScreen() {
         duration: 1000,
         useNativeDriver: false,
       }).start();
+
+      // 予測の算出
+      const currentMonth = new Date().getMonth() + 1;
+      const forecastResult = calcForecast(
+        revenue.monthly,
+        currentMonth,
+        wallResult.primary_wall,
+        userSettings.carryover_income,
+      );
+      setForecast(forecastResult);
+
+      // プレミアム判定
+      const premiumStatus = await isPremium();
+      setPremium(premiumStatus);
 
       // 未読ニュースの確認
       await loadUnreadNews(taxRules.news || [], userSettings);
@@ -171,6 +191,33 @@ export default function HomeScreen() {
             </View>
             <Feather name="chevron-right" size={18} color="#FFF" />
           </TouchableOpacity>
+        )}
+
+        {/* ペース警告バナー */}
+        {!privacyMode && forecast?.overshoot_month && (
+          premium ? (
+            <TouchableOpacity
+              style={styles.paceAlertBanner}
+              onPress={() => router.push('/(tabs)/chart')}
+            >
+              <Feather name="alert-triangle" size={18} color="#FFF" />
+              <Text style={styles.paceAlertText}>
+                ⚠️ 現在のペースでは{forecast.overshoot_month}月に{primaryWall?.label}を超える見込みです
+              </Text>
+              <Feather name="chevron-right" size={16} color="#FFF" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.paceAlertBannerFree}
+              onPress={() => setPaywallVisible(true)}
+            >
+              <Feather name="lock" size={16} color="#FF9500" />
+              <Text style={styles.paceAlertTextFree}>
+                ペース警告をプレミアムプランで確認
+              </Text>
+              <Feather name="chevron-right" size={16} color="#FF9500" />
+            </TouchableOpacity>
+          )
         )}
 
         {/* メインカード: 残り枠 */}
@@ -286,6 +333,16 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* ペイウォール */}
+      <PaywallModal
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        onPurchased={() => {
+          setPremium(true);
+          setPaywallVisible(false);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -505,6 +562,45 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 14,
     fontWeight: '700',
+    flex: 1,
+  },
+
+  // ペース警告バナー
+  paceAlertBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FF4444',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    shadowColor: '#FF4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  paceAlertText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+    flex: 1,
+  },
+  paceAlertBannerFree: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FFF8EE',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FF950040',
+  },
+  paceAlertTextFree: {
+    color: '#FF9500',
+    fontSize: 13,
+    fontWeight: '600',
     flex: 1,
   },
 });
