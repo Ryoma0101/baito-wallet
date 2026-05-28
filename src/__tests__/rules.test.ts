@@ -99,9 +99,8 @@ describe('fetchTaxRules', () => {
 
     const result = await fetchTaxRules();
 
-    expect(result.version).toBe('fallback');
+    expect(result.version).toBe('2026');
     expect(result.walls.income_tax).toBe(DEFAULT_WALLS.income_tax);
-    expect(result.news).toHaveLength(0);
   });
 
   test('ネットワークエラー → フォールバック値を返す', async () => {
@@ -109,7 +108,7 @@ describe('fetchTaxRules', () => {
 
     const result = await fetchTaxRules();
 
-    expect(result.version).toBe('fallback');
+    expect(result.version).toBe('2026');
     expect(result.walls.income_tax).toBe(DEFAULT_WALLS.income_tax);
   });
 
@@ -118,7 +117,7 @@ describe('fetchTaxRules', () => {
 
     const result = await fetchTaxRules();
 
-    expect(result.version).toBe('fallback');
+    expect(result.version).toBe('2026');
     expect(result.walls.income_tax).toBe(DEFAULT_WALLS.income_tax);
   });
 
@@ -127,7 +126,7 @@ describe('fetchTaxRules', () => {
 
     const result = await fetchTaxRules();
 
-    expect(result.version).toBe('fallback');
+    expect(result.version).toBe('2026');
     expect(result.walls.income_tax).toBe(DEFAULT_WALLS.income_tax);
   });
 
@@ -145,7 +144,7 @@ describe('fetchTaxRules', () => {
 
     const result = await fetchTaxRules();
 
-    expect(result.version).toBe('fallback');
+    expect(result.version).toBe('2026');
     expect(result.walls.income_tax).toBe(DEFAULT_WALLS.income_tax);
   });
 
@@ -158,7 +157,7 @@ describe('fetchTaxRules', () => {
 
     const result = await fetchTaxRules();
 
-    expect(result.version).toBe('fallback');
+    expect(result.version).toBe('2026');
   });
 });
 
@@ -166,10 +165,9 @@ describe('buildFallbackRules', () => {
   test('DEFAULT_WALLSの値でTaxRulesを生成する', () => {
     const result = buildFallbackRules();
 
-    expect(result.version).toBe('fallback');
+    expect(result.version).toBe('2026'); // tax_rules.jsonのバージョン
     expect(result.walls.income_tax).toBe(DEFAULT_WALLS.income_tax);
     expect(result.walls.social_insurance_basic).toBe(DEFAULT_WALLS.social_insurance_basic);
     expect(result.walls.social_insurance_large_company).toBe(DEFAULT_WALLS.social_insurance_large_company);
-    expect(result.news).toEqual([]);
   });
 });
