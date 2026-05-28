@@ -3,6 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import type { UserSettings, Job } from '@/types';
 
 let db: SQLite.SQLiteDatabase | null = null;
+let initPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 // ============================================================
 // マイグレーション管理
@@ -111,59 +112,66 @@ const migrations: Migration[] = [
 // DB初期化
 // ============================================================
 
-/**
- * DBを開いてマイグレーションを実行する。
- * アプリ起動時に一度だけ呼ぶこと。
- */
-export async function initDB(): Promise<SQLite.SQLiteDatabase> {
-  if (db) return db;
-
-  try {
-    db = await SQLite.openDatabaseAsync('baito-wallet.db');
-
-    // マイグレーション管理テーブル
-    await db.runAsync(`
-      CREATE TABLE IF NOT EXISTS _migrations (
-        version INTEGER PRIMARY KEY,
-        applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-      )
-    `);
-
-    // 適用済みバージョンの取得
-    const applied = await db.getAllAsync<{ version: number }>(
-      'SELECT version FROM _migrations ORDER BY version',
-    );
-    const appliedVersions = new Set(applied.map((row) => row.version));
-
-    // 未適用のマイグレーションを順番に実行
-    for (const migration of migrations) {
-      if (!appliedVersions.has(migration.version)) {
-        await migration.up(db);
-        await db.runAsync(
-          'INSERT INTO _migrations (version) VALUES (?)',
-          [migration.version],
-        );
-      }
-    }
-  } catch (error) {
-    console.error('Failed to initialize DB, deleting and retrying...', error);
-    db = null;
-    try {
-      const dbDir = FileSystem.documentDirectory + 'SQLite/';
-      const dbPath = dbDir + 'baito-wallet.db';
-      const info = await FileSystem.getInfoAsync(dbPath);
-      if (info.exists) {
-        await FileSystem.deleteAsync(dbPath);
-        console.log('Successfully deleted corrupted database.');
-      }
-    } catch (e) {
-      console.error('Failed to delete corrupted database', e);
-    }
-    // Throw the error so the app knows it failed, and the next launch will be fresh.
-    throw error;
+export function initDB(): Promise<SQLite.SQLiteDatabase> {
+  if (initPromise) {
+    return initPromise;
   }
 
-  return db;
+  initPromise = (async () => {
+    if (db) return db;
+
+    try {
+      const database = await SQLite.openDatabaseAsync('baito-wallet.db');
+      
+      // 一旦ローカル変数でマイグレーションまで完了させる
+      await database.runAsync(`
+        CREATE TABLE IF NOT EXISTS _migrations (
+          version INTEGER PRIMARY KEY,
+          applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `);
+
+      const applied = await database.getAllAsync<{ version: number }>(
+        'SELECT version FROM _migrations ORDER BY version',
+      );
+      const appliedVersions = new Set(applied.map((row) => row.version));
+
+      for (const migration of migrations) {
+        if (!appliedVersions.has(migration.version)) {
+          await migration.up(database);
+          await database.runAsync(
+            'INSERT INTO _migrations (version) VALUES (?)',
+            [migration.version],
+          );
+        }
+      }
+
+      // 成功したらモジュール変数にセット
+      db = database;
+      return db;
+    } catch (error) {
+      console.error('Failed to initialize DB, deleting and retrying...', error);
+      
+      try {
+        const dbDir = FileSystem.documentDirectory + 'SQLite/';
+        const dbPath = dbDir + 'baito-wallet.db';
+        const info = await FileSystem.getInfoAsync(dbPath);
+        if (info.exists) {
+          await FileSystem.deleteAsync(dbPath);
+          console.log('Successfully deleted corrupted database.');
+        }
+      } catch (e) {
+        console.error('Failed to delete corrupted database', e);
+      }
+      
+      // 初期化失敗時は次回再試行できるように Promise をクリアする
+      initPromise = null;
+      db = null;
+      throw error;
+    }
+  })();
+
+  return initPromise;
 }
 
 /**
