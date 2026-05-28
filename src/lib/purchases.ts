@@ -13,8 +13,8 @@ import { getUserSettings, updateUserPlan } from '@/lib/db';
 // ============================================================
 
 // RevenueCat パブリック API キー（本番用に差し替えること）
-const REVENUECAT_APPLE_KEY = 'YOUR_APPLE_API_KEY';
-const REVENUECAT_GOOGLE_KEY = 'YOUR_GOOGLE_API_KEY';
+const REVENUECAT_APPLE_KEY = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY || 'YOUR_APPLE_API_KEY';
+const REVENUECAT_GOOGLE_KEY = process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY || 'YOUR_GOOGLE_API_KEY';
 
 // RevenueCat のエンタイトルメント ID
 const ENTITLEMENT_ID = 'premium';
