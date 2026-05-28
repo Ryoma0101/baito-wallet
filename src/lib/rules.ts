@@ -9,7 +9,7 @@ import localTaxRules from '../../public/tax_rules.json';
  * 税制数値の更新はこのJSONを差し替えるだけで対応できる
  */
 export const TAX_RULES_URL =
-  'https://raw.githubusercontent.com/fuka/baito-wallet/main/public/tax_rules.json';
+  'https://raw.githubusercontent.com/Ryoma0101/baito-wallet/main/public/tax_rules.json';
 
 /** fetchのタイムアウト時間（ミリ秒） */
 const FETCH_TIMEOUT_MS = 5_000;
