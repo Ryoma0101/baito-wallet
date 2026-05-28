@@ -22,10 +22,6 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
     const num = typeof amount === 'string' ? parseInt(amount, 10) : amount;
     if (isNaN(num)) return '0円';
 
-    if (num >= 10_000 && num % 10_000 === 0) {
-      const man = Math.floor(num / 10_000);
-      return `${man.toLocaleString()}万円`;
-    }
     return `${num.toLocaleString()}円`;
   };
 

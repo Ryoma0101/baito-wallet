@@ -95,15 +95,10 @@ export default function PayslipsScreen() {
     }
     setEditingPayslip(null);
     setJobId(jobs[0].id);
-    setYear(new Date().getFullYear().toString());
-    let lastMonth = new Date().getMonth(); // 先月をデフォルトに
-    let currentYear = new Date().getFullYear();
-    if (lastMonth === 0) {
-      lastMonth = 12;
-      currentYear -= 1;
-    }
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
     setYear(currentYear.toString());
-    setMonth(lastMonth.toString());
+    setMonth(currentMonth.toString());
     setGrossAmount('');
     setNonTaxableAmount('0');
     setTaxableAmount('');

@@ -143,7 +143,7 @@ export default function TaxSupportScreen() {
   const totalTaxable = taxableByJob.reduce((sum, j) => sum + j.total, 0);
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Feather name="arrow-left" size={24} color="#333" />

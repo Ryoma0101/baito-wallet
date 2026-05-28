@@ -44,6 +44,9 @@ export default function ShiftsScreen() {
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
 
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -157,9 +160,14 @@ export default function ShiftsScreen() {
   }
 
   const currentMonthShifts = useMemo(() => {
-    const prefix = new Date().toISOString().substring(0, 7);
-    return shifts.filter(s => s.date.startsWith(prefix));
-  }, [shifts]);
+    const prefix = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
+    return shifts
+      .filter(s => s.date.startsWith(prefix))
+      .sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return a.start_time.localeCompare(b.start_time);
+      });
+  }, [shifts, selectedYear, selectedMonth]);
 
   const summary = useMemo(() => {
     let wage = 0;
@@ -171,12 +179,31 @@ export default function ShiftsScreen() {
     return { wage, trans, total: wage + trans };
   }, [currentMonthShifts]);
 
+  function changeMonth(delta: number) {
+    let m = selectedMonth + delta;
+    let y = selectedYear;
+    if (m > 12) { m = 1; y += 1; }
+    else if (m < 1) { m = 12; y -= 1; }
+    setSelectedMonth(m);
+    setSelectedYear(y);
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.listContainer}>
         
+        <View style={styles.monthSelector}>
+          <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.monthBtn}>
+            <Feather name="chevron-left" size={24} color={ACCENT} />
+          </TouchableOpacity>
+          <Text style={styles.monthText}>{selectedYear}年 {selectedMonth}月</Text>
+          <TouchableOpacity onPress={() => changeMonth(1)} style={styles.monthBtn}>
+            <Feather name="chevron-right" size={24} color={ACCENT} />
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>今月（{new Date().getMonth() + 1}月）の見込み給与</Text>
+          <Text style={styles.summaryTitle}>今月（{selectedMonth}月）の見込み給与</Text>
           <Text style={styles.summaryTotal}>{formatYen(summary.total)}</Text>
           <View style={styles.summaryDetails}>
             <Text style={styles.summaryDetailText}>課税対象額（給与）: {formatYen(summary.wage)}</Text>
@@ -184,12 +211,12 @@ export default function ShiftsScreen() {
           </View>
         </View>
 
-        {shifts.length === 0 ? (
+        {currentMonthShifts.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>登録されているシフトはありません</Text>
           </View>
         ) : (
-          shifts.map(shift => {
+          currentMonthShifts.map(shift => {
             const job = jobs.find(j => j.id === shift.job_id);
             return (
               <View key={shift.id} style={styles.card}>
@@ -430,6 +457,31 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 20,
     paddingBottom: 100,
+  },
+  monthSelector: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 20,
+  },
+  monthBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  monthText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   emptyContainer: {
     padding: 40,

@@ -150,10 +150,11 @@ export default function ChartScreen() {
   const monthDetails = buildMonthDetails();
 
   const maxAmount = monthDetails.reduce((max, m) => Math.max(max, m.amount), 0);
+  const monthlyWallAmount = primaryWallAmount > 0 ? Math.round(primaryWallAmount / 12) : 0;
   const yAxisMaxBase = showForecast
-    ? Math.max(maxAmount, primaryWallAmount)
+    ? Math.max(maxAmount, monthlyWallAmount)
     : maxAmount;
-  const yAxisMax = yAxisMaxBase > 0 ? Math.ceil(yAxisMaxBase / 10000) * 10000 : 100000;
+  const yAxisMax = yAxisMaxBase > 0 ? Math.max(Math.ceil(yAxisMaxBase / 10000) * 10000, 100000) : 100000;
 
   const barData: BarDataItem[] = monthDetails.map((detail) => ({
     value: detail.amount,
@@ -298,7 +299,7 @@ export default function ChartScreen() {
               height={220}
               width={chartWidth}
               showReferenceLine1={showForecast && primaryWallAmount > 0}
-              referenceLine1Position={primaryWallAmount}
+              referenceLine1Position={primaryWallAmount > 0 ? Math.round(primaryWallAmount / 12) : 0}
               referenceLine1Config={{
                 color: WALL_LINE_COLOR,
                 dashWidth: 6,
@@ -310,7 +311,7 @@ export default function ChartScreen() {
               <View style={styles.wallLabel}>
                 <View style={[styles.wallLabelDot, { backgroundColor: WALL_LINE_COLOR }]} />
                 <Text style={styles.wallLabelText}>
-                  壁: {formatYen(primaryWallAmount)}
+                  壁（月目安）: {formatYen(Math.round(primaryWallAmount / 12))}
                 </Text>
               </View>
             )}
