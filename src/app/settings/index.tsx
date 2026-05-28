@@ -17,6 +17,7 @@ import { resetAllData, getUserSettings, updateUserPlan } from '@/lib/db';
 import { restorePurchases, isPremium } from '@/lib/purchases';
 import { redeemPromoCode } from '@/lib/promoCode';
 import { fetchTaxRules } from '@/lib/rules';
+import PaywallModal from '@/components/PaywallModal';
 import type { PlanType } from '@/types';
 
 const ACCENT = '#208AEF';
@@ -28,6 +29,7 @@ export default function SettingsScreen() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [restoreLoading, setRestoreLoading] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<PlanType>('free');
+  const [paywallVisible, setPaywallVisible] = useState(false);
 
   useEffect(() => {
     checkPremiumStatus();
@@ -162,6 +164,30 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* サポート機能 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>サポート機能</Text>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              if (premium) {
+                router.push('/tax-support');
+              } else {
+                setPaywallVisible(true);
+              }
+            }}
+          >
+            <View style={styles.menuItemLeft}>
+              <Feather name="file-text" size={20} color={premium ? "#555" : "#FF9500"} />
+              <Text style={styles.menuItemText}>確定申告サポート</Text>
+            </View>
+            {!premium && (
+              <Feather name="lock" size={16} color="#FF9500" style={{ marginRight: 8 }} />
+            )}
+            <Feather name="chevron-right" size={20} color="#CCC" />
+          </TouchableOpacity>
+        </View>
+
         {/* 基本設定 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>基本設定</Text>
@@ -245,6 +271,17 @@ export default function SettingsScreen() {
         </View>
 
       </ScrollView>
+
+      {/* ペイウォール */}
+      <PaywallModal
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        onPurchased={() => {
+          setPremium(true);
+          setCurrentPlan('premium');
+          setPaywallVisible(false);
+        }}
+      />
     </SafeAreaView>
   );
 }
