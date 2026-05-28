@@ -6,7 +6,7 @@
 export type DependentType = 'parent' | 'spouse' | 'none';
 
 /** 課金プラン */
-export type PlanType = 'free' | 'premium';
+export type PlanType = 'free' | 'premium' | 'lifetime';
 
 /** ユーザー設定（user_settingsテーブルに対応） */
 export interface UserSettings {
@@ -52,6 +52,7 @@ export interface TaxRules {
   updated_at: string;
   walls: WallValues;
   news: TaxNews[];
+  promo_codes?: string[];
 }
 
 // ============================================================

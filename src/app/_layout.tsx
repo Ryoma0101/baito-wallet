@@ -5,6 +5,7 @@ import { useColorScheme } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 
 import { initDB, getUserSettings } from '@/lib/db';
+import { initPurchases } from '@/lib/purchases';
 import { PrivacyProvider } from '@/context/PrivacyContext';
 
 export default function RootLayout() {
@@ -16,6 +17,7 @@ export default function RootLayout() {
     async function bootstrap() {
       try {
         await initDB();
+        await initPurchases();
         const settings = await getUserSettings();
 
         if (!settings) {
@@ -32,10 +34,6 @@ export default function RootLayout() {
     }
     bootstrap();
   }, []);
-
-  if (!isReady) {
-    return null;
-  }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

@@ -82,6 +82,29 @@ const migrations: Migration[] = [
       await database.runAsync('ALTER TABLE shifts ADD COLUMN transportation_allowance INTEGER NOT NULL DEFAULT 0');
     },
   },
+  {
+    version: 4,
+    description: 'user_settings.plan に lifetime を許可',
+    up: async (database) => {
+      // SQLiteではCHECK制約の変更ができないため、テーブルを再構築する
+      await database.runAsync(`
+        CREATE TABLE IF NOT EXISTS user_settings_new (
+          id INTEGER PRIMARY KEY CHECK (id = 1),
+          birth_date TEXT NOT NULL,
+          dependent_type TEXT NOT NULL CHECK (dependent_type IN ('parent', 'spouse', 'none')),
+          large_company INTEGER NOT NULL DEFAULT 0,
+          carryover_income INTEGER NOT NULL DEFAULT 0,
+          plan TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'premium', 'lifetime'))
+        )
+      `);
+      await database.runAsync(`
+        INSERT OR IGNORE INTO user_settings_new
+        SELECT * FROM user_settings
+      `);
+      await database.runAsync('DROP TABLE user_settings');
+      await database.runAsync('ALTER TABLE user_settings_new RENAME TO user_settings');
+    },
+  },
 ];
 
 // ============================================================
@@ -203,6 +226,17 @@ export async function getUserSettings(): Promise<UserSettings | null> {
     carryover_income: row.carryover_income,
     plan: row.plan as UserSettings['plan'],
   };
+}
+
+/**
+ * ユーザーのプランだけを更新する（課金・プロモコード用）
+ */
+export async function updateUserPlan(plan: import('@/types').PlanType): Promise<void> {
+  const database = getDB();
+  await database.runAsync(
+    'UPDATE user_settings SET plan = ? WHERE id = 1',
+    [plan],
+  );
 }
 
 // ============================================================
