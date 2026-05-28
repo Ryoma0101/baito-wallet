@@ -169,21 +169,12 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>サポート機能</Text>
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => {
-              if (premium) {
-                router.push('/tax-support');
-              } else {
-                setPaywallVisible(true);
-              }
-            }}
+            onPress={() => router.push('/tax-support')}
           >
             <View style={styles.menuItemLeft}>
-              <Feather name="file-text" size={20} color={premium ? "#555" : "#FF9500"} />
+              <Feather name="file-text" size={20} color="#555" />
               <Text style={styles.menuItemText}>確定申告サポート</Text>
             </View>
-            {!premium && (
-              <Feather name="lock" size={16} color="#FF9500" style={{ marginRight: 8 }} />
-            )}
             <Feather name="chevron-right" size={20} color="#CCC" />
           </TouchableOpacity>
         </View>

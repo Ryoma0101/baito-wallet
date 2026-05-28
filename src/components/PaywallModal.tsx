@@ -48,9 +48,19 @@ const FEATURES = [
     desc: '壁を超えそうな月を事前にお知らせ',
   },
   {
-    icon: 'file-text' as const,
-    title: '確定申告サポート',
-    desc: '申告要否の判定とe-Tax連携',
+    icon: 'calendar' as const,
+    title: '過去のシフトが無制限',
+    desc: '過去3ヶ月より前のデータも閲覧可能に',
+  },
+  {
+    icon: 'briefcase' as const,
+    title: 'バイト先登録が無制限',
+    desc: '3件以上のバイト先を管理可能に',
+  },
+  {
+    icon: 'image' as const,
+    title: '給与明細に画像添付',
+    desc: '明細のスクショや写真を保存可能に',
   },
 ];
 
@@ -74,23 +84,22 @@ export default function PaywallModal({ visible, onClose, onPurchased }: PaywallM
         const lifetime = offerings.current.lifetime;
 
         setPrices({
-          monthlyPrice: monthly?.product.priceString ?? '¥200/月',
-          lifetimePrice: lifetime?.product.priceString ?? '¥500',
+          monthlyPrice: monthly?.product.priceString ?? '-',
+          lifetimePrice: lifetime?.product.priceString ?? '-',
           introPrice: monthly?.product.introPrice?.priceString ?? null,
         });
       } else {
-        // フォールバック（SDK未初期化時）
         setPrices({
-          monthlyPrice: '¥200/月',
-          lifetimePrice: '¥500',
-          introPrice: '¥100/初月',
+          monthlyPrice: '-',
+          lifetimePrice: '-',
+          introPrice: null,
         });
       }
     } catch {
       setPrices({
-        monthlyPrice: '¥200/月',
-        lifetimePrice: '¥500',
-        introPrice: '¥100/初月',
+        monthlyPrice: '-',
+        lifetimePrice: '-',
+        introPrice: null,
       });
     }
   }
@@ -103,6 +112,8 @@ export default function PaywallModal({ visible, onClose, onPurchased }: PaywallM
       if (success) {
         onPurchased();
         onClose();
+      } else {
+        Alert.alert('お知らせ', '購入処理がキャンセルされたか、現在の環境（Expo Go等）では決済がサポートされていません。');
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : '購入に失敗しました。';
@@ -121,6 +132,8 @@ export default function PaywallModal({ visible, onClose, onPurchased }: PaywallM
       if (success) {
         onPurchased();
         onClose();
+      } else {
+        Alert.alert('お知らせ', '購入処理がキャンセルされたか、現在の環境（Expo Go等）では決済がサポートされていません。');
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : '購入に失敗しました。';
@@ -209,7 +222,7 @@ export default function PaywallModal({ visible, onClose, onPurchased }: PaywallM
               ) : (
                 <View style={styles.buttonContent}>
                   <Text style={styles.primaryButtonText}>
-                    月額プラン {prices?.monthlyPrice ?? '¥200/月'}
+                    月額プラン {prices?.monthlyPrice ?? '-'}
                   </Text>
                   {prices?.introPrice && (
                     <View style={styles.introBadge}>
@@ -232,7 +245,7 @@ export default function PaywallModal({ visible, onClose, onPurchased }: PaywallM
                 <ActivityIndicator color={ACCENT} />
               ) : (
                 <Text style={styles.secondaryButtonText}>
-                  買い切り {prices?.lifetimePrice ?? '¥500'}（永久利用）
+                  買い切り {prices?.lifetimePrice ?? '-'}（永久利用）
                 </Text>
               )}
             </TouchableOpacity>

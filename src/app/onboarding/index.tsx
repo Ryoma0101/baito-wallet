@@ -72,13 +72,16 @@ export default function OnboardingScreen() {
 
   const handleNext = async () => {
     if (isLastStep) {
-      // 保存してホームへ遷移
+      // 既存の設定からplanを取得して保持する
+      const existing = await getUserSettings();
+      const currentPlan = existing?.plan ?? 'free';
+
       const settings: UserSettings = {
         birth_date: formatDate(birthDate),
         dependent_type: dependentType,
         large_company: largeCompany,
         carryover_income: Math.max(0, parseInt(carryoverIncome, 10) || 0),
-        plan: 'free',
+        plan: currentPlan,
       };
       await saveUserSettings(settings);
       router.replace('/(tabs)');

@@ -7,6 +7,8 @@ import { Feather } from '@expo/vector-icons';
 import { getAllJobs, addJob, updateJob, deleteJob } from '@/lib/db';
 import type { Job } from '@/types';
 import { CurrencyInput } from '@/components/CurrencyInput';
+import { canAddJob } from '@/lib/limits';
+import PaywallModal from '@/components/PaywallModal';
 
 const ACCENT = '#208AEF';
 
@@ -14,6 +16,7 @@ export default function JobsScreen() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [paywallVisible, setPaywallVisible] = useState(false);
 
   // Form state
   const [name, setName] = useState('');
@@ -37,7 +40,13 @@ export default function JobsScreen() {
     }
   }
 
-  function openAddModal() {
+  async function openAddModal() {
+    const allowed = await canAddJob();
+    if (!allowed) {
+      setPaywallVisible(true);
+      return;
+    }
+
     setEditingJob(null);
     setName('');
     setHourlyWage('');
@@ -242,6 +251,14 @@ export default function JobsScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+      <PaywallModal
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        onPurchased={() => {
+          setPaywallVisible(false);
+          openAddModal(); // 購入成功したら再度開く
+        }}
+      />
     </SafeAreaView>
   );
 }

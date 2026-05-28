@@ -9,6 +9,9 @@ import { CurrencyInput } from '@/components/CurrencyInput';
 import { usePrivacy } from '@/context/PrivacyContext';
 import { getAllShifts, addShift, updateShift, deleteShift, getActiveJobs } from '@/lib/db';
 import type { Shift, Job } from '@/types';
+import { isPremium } from '@/lib/purchases';
+import { getShiftDateFilter } from '@/lib/limits';
+import PaywallModal from '@/components/PaywallModal';
 
 const ACCENT = '#208AEF';
 
@@ -47,6 +50,9 @@ export default function ShiftsScreen() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
 
+  const [premium, setPremium] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
+
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -55,9 +61,10 @@ export default function ShiftsScreen() {
 
   async function loadData() {
     try {
-      const [sh, jb] = await Promise.all([getAllShifts(), getActiveJobs()]);
+      const [sh, jb, p] = await Promise.all([getAllShifts(), getActiveJobs(), isPremium()]);
       setShifts(sh);
       setJobs(jb);
+      setPremium(p);
     } catch (e) {
       console.error(e);
     }
@@ -161,13 +168,18 @@ export default function ShiftsScreen() {
 
   const currentMonthShifts = useMemo(() => {
     const prefix = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
-    return shifts
-      .filter(s => s.date.startsWith(prefix))
-      .sort((a, b) => {
-        if (a.date !== b.date) return a.date.localeCompare(b.date);
-        return a.start_time.localeCompare(b.start_time);
-      });
-  }, [shifts, selectedYear, selectedMonth]);
+    let filtered = shifts.filter(s => s.date.startsWith(prefix));
+    
+    const dateFilter = getShiftDateFilter(premium);
+    if (dateFilter) {
+      filtered = filtered.filter(s => s.date >= dateFilter.from);
+    }
+    
+    return filtered.sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return a.start_time.localeCompare(b.start_time);
+    });
+  }, [shifts, selectedYear, selectedMonth, premium]);
 
   const summary = useMemo(() => {
     let wage = 0;
@@ -250,6 +262,13 @@ export default function ShiftsScreen() {
               </View>
             );
           })
+        )}
+
+        {!premium && (
+          <TouchableOpacity style={styles.premiumBanner} onPress={() => setPaywallVisible(true)}>
+            <Feather name="lock" size={16} color="#FF9500" style={{ marginRight: 8 }} />
+            <Text style={styles.premiumBannerText}>3ヶ月より前のデータを見るにはプレミアムが必要です</Text>
+          </TouchableOpacity>
         )}
       </ScrollView>
 
@@ -445,6 +464,15 @@ export default function ShiftsScreen() {
           </View>
         </Modal>
       )}
+
+      <PaywallModal
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        onPurchased={() => {
+          setPaywallVisible(false);
+          loadData(); // 購入成功したらデータを再読み込み
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -457,6 +485,22 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 20,
     paddingBottom: 100,
+  },
+  premiumBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF8EE',
+    borderWidth: 1,
+    borderColor: '#FF950040',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  premiumBannerText: {
+    color: '#FF9500',
+    fontWeight: '600',
+    fontSize: 14,
   },
   monthSelector: {
     flexDirection: 'row',

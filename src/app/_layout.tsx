@@ -6,6 +6,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 
 import { initDB, getUserSettings } from '@/lib/db';
 import { initPurchases } from '@/lib/purchases';
+import { seedDummyData } from '@/lib/seed';
 import { PrivacyProvider } from '@/context/PrivacyContext';
 
 export default function RootLayout() {
@@ -17,6 +18,11 @@ export default function RootLayout() {
     async function bootstrap() {
       try {
         await initDB();
+        
+        if (process.env.EXPO_PUBLIC_USE_DUMMY_DATA === 'true') {
+          await seedDummyData();
+        }
+        
         await initPurchases();
         const settings = await getUserSettings();
 

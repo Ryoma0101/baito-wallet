@@ -11,6 +11,8 @@ import { CurrencyInput } from '@/components/CurrencyInput';
 import { usePrivacy } from '@/context/PrivacyContext';
 import { getAllPayslips, addPayslip, updatePayslip, deletePayslip, getActiveJobs, getAllShifts } from '@/lib/db';
 import type { Payslip, Job, Shift } from '@/types';
+import { canAttachImage } from '@/lib/limits';
+import PaywallModal from '@/components/PaywallModal';
 
 const ACCENT = '#208AEF';
 
@@ -29,6 +31,7 @@ export default function PayslipsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('add');
   const [editingPayslip, setEditingPayslip] = useState<Payslip | null>(null);
+  const [paywallVisible, setPaywallVisible] = useState(false);
 
   // Form state
   const [jobId, setJobId] = useState<number | null>(null);
@@ -55,6 +58,12 @@ export default function PayslipsScreen() {
   };
 
   async function pickDocument() {
+    const allowed = await canAttachImage();
+    if (!allowed) {
+      setPaywallVisible(true);
+      return;
+    }
+
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['image/*', 'application/pdf'],
@@ -476,6 +485,14 @@ export default function PayslipsScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      <PaywallModal
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        onPurchased={() => {
+          setPaywallVisible(false);
+        }}
+      />
     </SafeAreaView>
   );
 }
