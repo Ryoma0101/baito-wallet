@@ -28,6 +28,8 @@ export interface WallValues {
   dependent_specific_age_min: number;
   dependent_specific_age_max: number;
   dependent_specific_limit: number;
+  spouse_full_deduction: number;
+  social_insurance_specific: number;
   social_insurance_basic: number;
   social_insurance_large_company: number;
   residence_tax_approx: number;

@@ -88,7 +88,7 @@ describe('tax.ts', () => {
       expect(result.primary_wall).toBe(1_300_000); // 一般社保130万
       expect(result.primary_label).toBe('社会保険の扶養');
       expect(result.walls).toContainEqual(
-        expect.objectContaining({ label: '一般扶養控除', amount: 1_780_000 })
+        expect.objectContaining({ label: '一般扶養控除', amount: 1_360_000 })
       );
     });
 
@@ -105,7 +105,7 @@ describe('tax.ts', () => {
       expect(result.primary_wall).toBe(1_300_000);
       expect(result.walls).toHaveLength(3);
       expect(result.walls).toContainEqual(
-        expect.objectContaining({ label: '配偶者控除', amount: 1_780_000 })
+        expect.objectContaining({ label: '配偶者控除満額', amount: 1_690_000 })
       );
     });
 
