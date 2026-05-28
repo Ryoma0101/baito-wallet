@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Modal,
   Dimensions,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
@@ -14,12 +15,19 @@ import { Feather } from '@expo/vector-icons';
 import { BarChart } from 'react-native-gifted-charts';
 
 import { getUserSettings, getActiveJobs, getAllShifts, getAllPayslips } from '@/lib/db';
+import { fetchTaxRules } from '@/lib/rules';
 import { calcRevenue } from '@/lib/revenue';
+import { calcWalls } from '@/lib/tax';
+import { calcForecast, ForecastResult } from '@/lib/forecast';
+import { isPremium } from '@/lib/purchases';
 import { usePrivacy } from '@/context/PrivacyContext';
+import PaywallModal from '@/components/PaywallModal';
 import type { UserSettings, Job, RevenueResult } from '@/types';
 
 const ACCENT = '#208AEF';
 const ACCENT_LIGHT = '#208AEF40';
+const FORECAST_COLOR = '#FF950080';
+const WALL_LINE_COLOR = '#FF4444';
 const BG = '#F5F5F8';
 
 const MONTH_LABELS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
@@ -29,6 +37,7 @@ interface MonthDetail {
   label: string;
   amount: number;
   source: 'actual' | 'estimated';
+  isForecast: boolean;
   jobBreakdown: { job_name: string; amount: number }[];
 }
 
@@ -49,6 +58,13 @@ export default function ChartScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [hasData, setHasData] = useState(false);
 
+  // 予測関連
+  const [showForecast, setShowForecast] = useState(false);
+  const [forecast, setForecast] = useState<ForecastResult | null>(null);
+  const [premium, setPremium] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const [primaryWallAmount, setPrimaryWallAmount] = useState(0);
+
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -58,52 +74,72 @@ export default function ChartScreen() {
 
   async function loadData() {
     try {
-      const [userSettings, activeJobs, allShifts, allPayslips] = await Promise.all([
+      const [userSettings, taxRules, activeJobs, allShifts, allPayslips, premiumStatus] = await Promise.all([
         getUserSettings(),
+        fetchTaxRules(),
         getActiveJobs(),
         getAllShifts(),
         getAllPayslips(),
+        isPremium(),
       ]);
 
       if (!userSettings) return;
 
       setSettings(userSettings);
       setJobs(activeJobs);
+      setPremium(premiumStatus);
 
       const result = calcRevenue(userSettings, activeJobs, allShifts, allPayslips, selectedYear);
       setRevenue(result);
 
       const anyData = result.monthly.some((m) => m.amount > 0);
       setHasData(anyData);
+
+      // 壁の判定
+      const wallResult = calcWalls(userSettings, taxRules);
+      setPrimaryWallAmount(wallResult.primary_wall);
+
+      // 予測の算出
+      const currentMonth = selectedYear === new Date().getFullYear()
+        ? new Date().getMonth() + 1
+        : 12;
+      const forecastResult = calcForecast(
+        result.monthly,
+        currentMonth,
+        wallResult.primary_wall,
+        userSettings.carryover_income,
+      );
+      setForecast(forecastResult);
     } catch (_error) {
       // エラーハンドリング
     }
   }
 
-  function getJobBreakdown(month: number): { job_name: string; amount: number }[] {
-    // We need to recalculate per-job per-month from raw data
-    // Since calcRevenue doesn't expose per-job-per-month breakdown,
-    // we approximate using the available data
-    // For a proper breakdown, we'd need access to the raw jobMonthMap
-    // For now, if there's only one job we can attribute all to it
-    if (!revenue) return [];
-
-    // Simple approach: we can't get per-job-per-month from the current API.
-    // Show the by_job totals only in the year summary, and for monthly detail
-    // show the total amount per month.
-    return [];
+  function handleForecastToggle(value: boolean) {
+    if (value && !premium) {
+      setPaywallVisible(true);
+      return;
+    }
+    setShowForecast(value);
   }
 
   function buildMonthDetails(): MonthDetail[] {
     if (!revenue) return [];
 
-    return revenue.monthly.map((m) => ({
-      month: m.month,
-      label: MONTH_LABELS[m.month - 1],
-      amount: m.amount,
-      source: m.source,
-      jobBreakdown: getJobBreakdown(m.month),
-    }));
+    return revenue.monthly.map((m) => {
+      const forecastItem = forecast?.monthly_forecast.find((f) => f.month === m.month);
+      const isForecast = forecastItem?.is_forecast ?? false;
+      const amount = showForecast && isForecast ? (forecastItem?.amount ?? m.amount) : m.amount;
+
+      return {
+        month: m.month,
+        label: MONTH_LABELS[m.month - 1],
+        amount,
+        source: m.source,
+        isForecast: showForecast && isForecast,
+        jobBreakdown: [],
+      };
+    });
   }
 
   function handleBarPress(detail: MonthDetail) {
@@ -114,19 +150,30 @@ export default function ChartScreen() {
   const monthDetails = buildMonthDetails();
 
   const maxAmount = monthDetails.reduce((max, m) => Math.max(max, m.amount), 0);
-  // Round up to a nice number for the y-axis
-  const yAxisMax = maxAmount > 0 ? Math.ceil(maxAmount / 10000) * 10000 : 100000;
+  const yAxisMaxBase = showForecast
+    ? Math.max(maxAmount, primaryWallAmount)
+    : maxAmount;
+  const yAxisMax = yAxisMaxBase > 0 ? Math.ceil(yAxisMaxBase / 10000) * 10000 : 100000;
 
   const barData: BarDataItem[] = monthDetails.map((detail) => ({
     value: detail.amount,
     label: detail.label,
-    frontColor: detail.source === 'actual' ? ACCENT : ACCENT_LIGHT,
+    frontColor: detail.isForecast
+      ? FORECAST_COLOR
+      : detail.source === 'actual'
+        ? ACCENT
+        : ACCENT_LIGHT,
     onPress: () => handleBarPress(detail),
   }));
 
   const screenWidth = Dimensions.get('window').width;
-  const chartWidth = screenWidth - 64; // account for padding
+  const chartWidth = screenWidth - 64;
   const barWidth = Math.max(Math.floor(chartWidth / 12) - 12, 16);
+
+  // 壁ラインの位置を計算
+  const wallLineY = showForecast && primaryWallAmount > 0
+    ? Math.round((primaryWallAmount / yAxisMax) * 220)
+    : null;
 
   if (!settings) {
     return (
@@ -164,6 +211,14 @@ export default function ChartScreen() {
           <Text style={styles.totalAmount}>
             {revenue ? formatYen(revenue.annual_total) : formatYen(0)}
           </Text>
+          {showForecast && forecast && (
+            <View style={styles.forecastSummary}>
+              <Feather name="trending-up" size={14} color="#FF9500" />
+              <Text style={styles.forecastSummaryText}>
+                予測年間収入: {formatYen(forecast.predicted_annual)}
+              </Text>
+            </View>
+          )}
           {revenue && revenue.by_job.length > 0 && (
             <View style={styles.jobSummary}>
               {revenue.by_job.map((job) => (
@@ -176,6 +231,25 @@ export default function ChartScreen() {
           )}
         </View>
 
+        {/* 予測トグル */}
+        <View style={styles.forecastToggleCard}>
+          <View style={styles.forecastToggleLeft}>
+            <Feather name="trending-up" size={18} color={premium ? '#FF9500' : '#CCC'} />
+            <View>
+              <Text style={styles.forecastToggleLabel}>予測を表示</Text>
+              {!premium && (
+                <Text style={styles.forecastTogglePremium}>プレミアム機能</Text>
+              )}
+            </View>
+          </View>
+          <Switch
+            value={showForecast}
+            onValueChange={handleForecastToggle}
+            trackColor={{ false: '#E0E0E0', true: '#FF950060' }}
+            thumbColor={showForecast ? '#FF9500' : '#CCC'}
+          />
+        </View>
+
         {/* 凡例 */}
         <View style={styles.legendContainer}>
           <View style={styles.legendItem}>
@@ -186,10 +260,16 @@ export default function ChartScreen() {
             <View style={[styles.legendDot, { backgroundColor: ACCENT_LIGHT }]} />
             <Text style={styles.legendText}>見込み</Text>
           </View>
+          {showForecast && (
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: FORECAST_COLOR }]} />
+              <Text style={styles.legendText}>予測</Text>
+            </View>
+          )}
         </View>
 
         {/* グラフ */}
-        {hasData ? (
+        {hasData || showForecast ? (
           <View style={styles.chartCard}>
             <BarChart
               data={barData}
@@ -217,7 +297,23 @@ export default function ChartScreen() {
               barBorderRadius={4}
               height={220}
               width={chartWidth}
+              showReferenceLine1={showForecast && primaryWallAmount > 0}
+              referenceLine1Position={primaryWallAmount}
+              referenceLine1Config={{
+                color: WALL_LINE_COLOR,
+                dashWidth: 6,
+                dashGap: 4,
+                thickness: 2,
+              }}
             />
+            {showForecast && primaryWallAmount > 0 && (
+              <View style={styles.wallLabel}>
+                <View style={[styles.wallLabelDot, { backgroundColor: WALL_LINE_COLOR }]} />
+                <Text style={styles.wallLabelText}>
+                  壁: {formatYen(primaryWallAmount)}
+                </Text>
+              </View>
+            )}
           </View>
         ) : (
           <View style={styles.emptyCard}>
@@ -225,6 +321,16 @@ export default function ChartScreen() {
             <Text style={styles.emptyTitle}>データがありません</Text>
             <Text style={styles.emptyDesc}>
               シフトや給与明細を登録すると{'\n'}月別グラフが表示されます
+            </Text>
+          </View>
+        )}
+
+        {/* 壁超え警告 */}
+        {showForecast && forecast?.overshoot_month && (
+          <View style={styles.overshootWarning}>
+            <Feather name="alert-triangle" size={18} color="#FF4444" />
+            <Text style={styles.overshootText}>
+              現在のペースでは{forecast.overshoot_month}月に壁を超える見込みです
             </Text>
           </View>
         )}
@@ -243,17 +349,22 @@ export default function ChartScreen() {
                   style={[
                     styles.monthDot,
                     {
-                      backgroundColor:
-                        detail.source === 'actual' ? ACCENT : ACCENT_LIGHT,
+                      backgroundColor: detail.isForecast
+                        ? FORECAST_COLOR
+                        : detail.source === 'actual'
+                          ? ACCENT
+                          : ACCENT_LIGHT,
                     },
                   ]}
                 />
                 <Text style={styles.monthLabel}>{detail.label}</Text>
                 <Text style={styles.sourceTag}>
                   {detail.amount > 0
-                    ? detail.source === 'actual'
-                      ? '実績'
-                      : '見込み'
+                    ? detail.isForecast
+                      ? '予測'
+                      : detail.source === 'actual'
+                        ? '実績'
+                        : '見込み'
                     : ''}
                 </Text>
               </View>
@@ -289,28 +400,22 @@ export default function ChartScreen() {
                     style={[
                       styles.modalSourceDot,
                       {
-                        backgroundColor:
-                          selectedMonth.source === 'actual' ? ACCENT : ACCENT_LIGHT,
+                        backgroundColor: selectedMonth.isForecast
+                          ? FORECAST_COLOR
+                          : selectedMonth.source === 'actual'
+                            ? ACCENT
+                            : ACCENT_LIGHT,
                       },
                     ]}
                   />
                   <Text style={styles.modalSourceText}>
-                    {selectedMonth.source === 'actual' ? '実績データ' : '見込みデータ'}
+                    {selectedMonth.isForecast
+                      ? '予測データ'
+                      : selectedMonth.source === 'actual'
+                        ? '実績データ'
+                        : '見込みデータ'}
                   </Text>
                 </View>
-                {selectedMonth.jobBreakdown.length > 0 && (
-                  <View style={styles.modalJobSection}>
-                    <Text style={styles.modalJobTitle}>バイト先別内訳</Text>
-                    {selectedMonth.jobBreakdown.map((job, idx) => (
-                      <View key={idx} style={styles.modalJobRow}>
-                        <Text style={styles.modalJobName}>{job.job_name}</Text>
-                        <Text style={styles.modalJobAmount}>
-                          {formatYen(job.amount)}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
                 <TouchableOpacity
                   style={styles.modalCloseButton}
                   onPress={() => setModalVisible(false)}
@@ -322,6 +427,16 @@ export default function ChartScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ペイウォール */}
+      <PaywallModal
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        onPurchased={() => {
+          setPremium(true);
+          setShowForecast(true);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -395,6 +510,21 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#1A1A1A',
   },
+  forecastSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    backgroundColor: '#FFF8EE',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  forecastSummaryText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FF9500',
+  },
   jobSummary: {
     marginTop: 12,
     borderTopWidth: 1,
@@ -415,6 +545,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
+  },
+
+  // 予測トグル
+  forecastToggleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  forecastToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  forecastToggleLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+  },
+  forecastTogglePremium: {
+    fontSize: 11,
+    color: '#FF9500',
+    fontWeight: '500',
   },
 
   // 凡例
@@ -454,6 +612,23 @@ const styles = StyleSheet.create({
     elevation: 2,
     overflow: 'hidden',
   },
+  wallLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingLeft: 4,
+  },
+  wallLabelDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  wallLabelText: {
+    fontSize: 12,
+    color: WALL_LINE_COLOR,
+    fontWeight: '600',
+  },
 
   yAxisText: {
     fontSize: 10,
@@ -490,6 +665,25 @@ const styles = StyleSheet.create({
     color: '#BBB',
     textAlign: 'center',
     lineHeight: 20,
+  },
+
+  // 壁超え警告
+  overshootWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FFF5F5',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FFEBEB',
+  },
+  overshootText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FF4444',
+    flex: 1,
   },
 
   // 月別一覧
@@ -585,32 +779,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: '#666',
-  },
-  modalJobSection: {
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    paddingTop: 12,
-    marginBottom: 16,
-  },
-  modalJobTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#888',
-    marginBottom: 8,
-  },
-  modalJobRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-  },
-  modalJobName: {
-    fontSize: 14,
-    color: '#333',
-  },
-  modalJobAmount: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
   },
   modalCloseButton: {
     backgroundColor: BG,
