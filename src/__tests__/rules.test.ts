@@ -8,14 +8,16 @@ const VALID_TAX_RULES: TaxRules = {
   version: '2026',
   updated_at: '2026-01-01',
   walls: {
-    income_tax: 1_780_000,
-    dependent_general: 1_780_000,
+    income_tax: 1780000,
+    dependent_general: 1360000,
     dependent_specific_age_min: 19,
     dependent_specific_age_max: 22,
-    dependent_specific_limit: 1_500_000,
-    social_insurance_basic: 1_300_000,
-    social_insurance_large_company: 1_060_000,
-    residence_tax_approx: 1_100_000,
+    dependent_specific_limit: 1500000,
+    spouse_full_deduction: 1690000,
+    social_insurance_specific: 1500000,
+    social_insurance_basic: 1300000,
+    social_insurance_large_company: 1060000,
+    residence_tax_approx: 1100000,
   },
   news: [
     {

@@ -33,7 +33,7 @@ export function calcWalls(settings: UserSettings, rules: TaxRules): WallResult {
     if (age >= w.dependent_specific_age_min && age <= w.dependent_specific_age_max) {
       walls.push({
         label: '社会保険の扶養',
-        amount: w.dependent_specific_limit,
+        amount: w.social_insurance_specific,
         description: '社会保険の扶養から外れる上限額です',
       });
       walls.push({
@@ -72,9 +72,9 @@ export function calcWalls(settings: UserSettings, rules: TaxRules): WallResult {
       description: '配偶者の社会保険扶養から外れる上限額です',
     });
     walls.push({
-      label: '配偶者控除',
-      amount: w.dependent_general,
-      description: '配偶者控除が受けられる上限額です',
+      label: '配偶者控除満額',
+      amount: w.spouse_full_deduction,
+      description: '配偶者控除が満額受けられる上限額です',
     });
     walls.push({
       label: '所得税非課税枠',

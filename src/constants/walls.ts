@@ -7,13 +7,17 @@ export const DEFAULT_WALLS = {
   /** 所得税の非課税枠（2026年〜） */
   income_tax: 1_780_000,
   /** 一般扶養控除の上限 */
-  dependent_general: 1_780_000,
+  dependent_general: 1_360_000,
   /** 特定扶養の最低年齢 */
   dependent_specific_age_min: 19,
   /** 特定扶養の最高年齢 */
   dependent_specific_age_max: 22,
   /** 特定扶養控除の上限 */
   dependent_specific_limit: 1_500_000,
+  /** 配偶者控除の満額上限 */
+  spouse_full_deduction: 1_690_000,
+  /** 社会保険の扶養上限（特定扶養） */
+  social_insurance_specific: 1_500_000,
   /** 社会保険の扶養上限（基本） */
   social_insurance_basic: 1_300_000,
   /** 社会保険の扶養上限（大企業） */

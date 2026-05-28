@@ -65,14 +65,14 @@ describe('revenue.ts', () => {
       { id: 1, job_id: 1, date: '2026-01-10', start_time: '10:00', end_time: '15:00', break_minutes: 0, estimated_wage: 5000, transportation_allowance: 0 },
     ];
     const payslips: Payslip[] = [
-      { id: 1, job_id: 1, year: 2024, month: 1, actual_amount: 10000, taxable_amount: 10000, non_taxable_amount: 0, image_uri: null },
-      { id: 2, job_id: 2, year: 2024, month: 1, actual_amount: 20000, taxable_amount: 20000, non_taxable_amount: 0, image_uri: null },
+      { id: 1, job_id: 1, year: 2026, month: 1, actual_amount: 10000, taxable_amount: 10000, non_taxable_amount: 0, image_uri: null },
+      { id: 2, job_id: 2, year: 2026, month: 1, actual_amount: 20000, taxable_amount: 20000, non_taxable_amount: 0, image_uri: null },
     ];
 
     const result = calcRevenue(baseSettings, jobs, shifts, payslips, currentYear);
 
-    // シフトは無視され実績のみ合算される
-    expect(result.monthly[0].amount).toBe(7300);
+    // シフトは無視され実績のみ合算される（10000 + 20000 = 30000）
+    expect(result.monthly[0].amount).toBe(30000);
     expect(result.monthly[0].source).toBe('actual');
   });
 
