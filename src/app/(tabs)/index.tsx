@@ -200,10 +200,27 @@ export default function HomeScreen() {
               style={styles.paceAlertBanner}
               onPress={() => router.push('/(tabs)/chart')}
             >
-              <Feather name="alert-triangle" size={18} color="#FFF" />
-              <Text style={styles.paceAlertText}>
-                ⚠️ 現在のペースでは{forecast.overshoot_month}月に{primaryWall?.label}を超える見込みです
-              </Text>
+              <Feather name="alert-triangle" size={18} color="#FFF" style={{ marginTop: 2 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.paceAlertText}>
+                  ⚠️ 今のペースだと{forecast.overshoot_month}月に{primaryWall?.label}を超えます
+                </Text>
+                {(() => {
+                  const currentMonth = new Date().getMonth() + 1;
+                  const remainingMonths = 12 - currentMonth;
+                  const excessAmount = forecast.predicted_annual - primaryWall.amount;
+                  if (excessAmount > 0 && remainingMonths > 0) {
+                    // 100円単位で切り上げ
+                    const reducePerMonth = Math.ceil((excessAmount / remainingMonths) / 100) * 100;
+                    return (
+                      <Text style={styles.paceAlertSubText}>
+                        残りの月で、月あたり約 {formatYen(reducePerMonth)} ほどペースを落とす必要があります
+                      </Text>
+                    );
+                  }
+                  return null;
+                })()}
+              </View>
               <Feather name="chevron-right" size={16} color="#FFF" />
             </TouchableOpacity>
           ) : (
@@ -582,9 +599,16 @@ const styles = StyleSheet.create({
   },
   paceAlertText: {
     color: '#FFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    flex: 1,
+    marginBottom: 4,
+  },
+  paceAlertSubText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '500',
+    opacity: 0.9,
+    lineHeight: 16,
   },
   paceAlertBannerFree: {
     flexDirection: 'row',

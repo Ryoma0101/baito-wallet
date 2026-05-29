@@ -26,7 +26,7 @@ import type { UserSettings, Job, RevenueResult } from '@/types';
 
 const ACCENT = '#208AEF';
 const ACCENT_LIGHT = '#208AEF40';
-const FORECAST_COLOR = '#FF950080';
+const FORECAST_COLOR = '#FFB347'; // 不透明なオレンジ色に変更
 const WALL_LINE_COLOR = '#FF4444';
 const BG = '#F5F5F8';
 
