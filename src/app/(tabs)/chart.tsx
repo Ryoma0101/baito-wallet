@@ -273,6 +273,7 @@ export default function ChartScreen() {
         {hasData || showForecast ? (
           <View style={styles.chartCard}>
             <BarChart
+              key={`chart-${showForecast ? 'forecast' : 'actual'}`}
               data={barData}
               barWidth={barWidth}
               spacing={Math.max(Math.floor(chartWidth / 12) - barWidth, 4)}
