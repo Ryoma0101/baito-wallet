@@ -94,8 +94,9 @@ export function calcWalls(settings: UserSettings, rules: TaxRules): WallResult {
     });
   }
 
-  // 4. large_company === true
-  if (settings.large_company) {
+  // 4. large_company === true かつ 昼間学生でない
+  //    昼間部の学生は勤務先の規模に関係なく106万円の壁（社保加入義務）の適用除外
+  if (settings.large_company && !settings.is_student) {
     pushWall('social_insurance_large_company', {
       label: '大企業の社保壁',
       amount: w.social_insurance_large_company,

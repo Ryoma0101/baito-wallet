@@ -18,14 +18,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { saveUserSettings, getUserSettings, initDB } from '@/lib/db';
 import type { DependentType, UserSettings } from '@/types';
 
-type Step = 'birth_date' | 'dependent_type' | 'large_company' | 'carryover_income';
+type Step = 'birth_date' | 'dependent_type' | 'large_company' | 'is_student' | 'carryover_income';
 
-const STEPS: Step[] = ['birth_date', 'dependent_type', 'large_company', 'carryover_income'];
+const STEPS: Step[] = ['birth_date', 'dependent_type', 'large_company', 'is_student', 'carryover_income'];
 
 const STEP_TITLES: Record<Step, string> = {
   birth_date: '生年月日を入力してください',
   dependent_type: '扶養の種別を選択してください',
   large_company: '勤務先の規模を教えてください',
+  is_student: '昼間の学生ですか？',
   carryover_income: '今年の繰越収入を入力してください',
 };
 
@@ -33,6 +34,7 @@ const STEP_SUBTITLES: Record<Step, string> = {
   birth_date: '年齢に応じた壁を自動判定します',
   dependent_type: '適用される控除が変わります',
   large_company: '大企業の場合は106万円の壁も適用されます',
+  is_student: '昼間部の学生は106万円の壁が適用されません',
   carryover_income: '年途中でインストールした場合の既存収入額です',
 };
 
@@ -45,6 +47,7 @@ export default function OnboardingScreen() {
   const [showDatePicker, setShowDatePicker] = useState(Platform.OS === 'ios');
   const [dependentType, setDependentType] = useState<DependentType>('parent');
   const [largeCompany, setLargeCompany] = useState(false);
+  const [isStudent, setIsStudent] = useState(false);
   const [carryoverIncome, setCarryoverIncome] = useState('0');
   const [isEditing, setIsEditing] = useState(false);
 
@@ -58,6 +61,7 @@ export default function OnboardingScreen() {
           setBirthDate(new Date(existing.birth_date));
           setDependentType(existing.dependent_type);
           setLargeCompany(existing.large_company);
+          setIsStudent(existing.is_student);
           setCarryoverIncome(existing.carryover_income.toString());
         }
       } catch (e) {
@@ -80,6 +84,7 @@ export default function OnboardingScreen() {
         birth_date: formatDate(birthDate),
         dependent_type: dependentType,
         large_company: largeCompany,
+        is_student: isStudent,
         carryover_income: Math.max(0, parseInt(carryoverIncome, 10) || 0),
         plan: currentPlan,
       };
@@ -230,6 +235,41 @@ export default function OnboardingScreen() {
                         style={[
                           styles.optionLabel,
                           largeCompany === option.value && styles.optionLabelSelected,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                      <Text style={styles.optionDesc}>{option.desc}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {currentStep === 'is_student' && (
+              <View style={styles.optionsContainer}>
+                {([
+                  { value: true, label: 'はい（昼間部の学生）', desc: '昼間部の学生は106万円の壁が適用されません' },
+                  { value: false, label: 'いいえ', desc: '休学中・夜間・通信制の方は「いいえ」を選んでください' },
+                ]).map((option) => (
+                  <TouchableOpacity
+                    key={String(option.value)}
+                    style={[
+                      styles.optionCard,
+                      isStudent === option.value && styles.optionCardSelected,
+                    ]}
+                    onPress={() => setIsStudent(option.value)}
+                  >
+                    <View style={styles.radioOuter}>
+                      {isStudent === option.value && (
+                        <View style={styles.radioInner} />
+                      )}
+                    </View>
+                    <View style={styles.optionTextContainer}>
+                      <Text
+                        style={[
+                          styles.optionLabel,
+                          isStudent === option.value && styles.optionLabelSelected,
                         ]}
                       >
                         {option.label}

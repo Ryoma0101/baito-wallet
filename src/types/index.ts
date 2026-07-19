@@ -13,6 +13,7 @@ export interface UserSettings {
   birth_date: string;          // YYYY-MM-DD
   dependent_type: DependentType;
   large_company: boolean;
+  is_student: boolean;         // 昼間部の学生か（106万円壁の適用除外判定用）
   carryover_income: number;    // 円
   plan: PlanType;
 }
