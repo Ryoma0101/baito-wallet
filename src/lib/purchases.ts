@@ -32,6 +32,12 @@ let initialized = false;
 export async function initPurchases(): Promise<void> {
   if (initialized) return;
 
+  // react-native-purchases はネイティブ専用のため、Web では初期化しない
+  // （initialized が false のままなので isPremium はローカルDBのみで判定される）
+  if (Platform.OS === 'web') {
+    return;
+  }
+
   const apiKey = Platform.OS === 'ios' ? REVENUECAT_APPLE_KEY : REVENUECAT_GOOGLE_KEY;
 
   // プレースホルダーのままの場合はスキップ（開発中）
