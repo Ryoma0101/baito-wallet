@@ -49,6 +49,13 @@ function isValidTaxRules(data: unknown): data is TaxRules {
   }
 
   if (!Array.isArray(obj.news)) return false;
+
+  // disabled_walls は任意フィールド。存在する場合は文字列配列であること（後方互換のため未定義は許容）
+  if (obj.disabled_walls !== undefined) {
+    if (!Array.isArray(obj.disabled_walls)) return false;
+    if (!obj.disabled_walls.every((k) => typeof k === 'string')) return false;
+  }
+
   return true;
 }
 

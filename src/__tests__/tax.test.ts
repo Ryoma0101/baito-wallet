@@ -156,4 +156,66 @@ describe('tax.ts', () => {
       expect(result.primary_label).toBe('大企業の社保壁');
     });
   });
+
+  describe('calcWalls: disabled_walls（リモートJSONによる壁の無効化）', () => {
+    test('disabled_walls で106万円の壁（大企業）が判定から消える', () => {
+      const settings: UserSettings = {
+        birth_date: getBirthDateForAge(19),
+        dependent_type: 'parent',
+        large_company: true,
+        carryover_income: 0,
+        plan: 'free',
+      };
+      const rulesWithDisabled: TaxRules = {
+        ...mockRules,
+        disabled_walls: ['social_insurance_large_company'],
+      };
+      const result = calcWalls(settings, rulesWithDisabled);
+
+      // 106万の壁が消えるので、次の壁（社保の扶養150万）が primary になる
+      expect(result.walls).not.toContainEqual(
+        expect.objectContaining({ label: '大企業の社保壁' })
+      );
+      expect(result.walls).toHaveLength(3);
+      expect(result.primary_wall).toBe(1_500_000);
+      expect(result.primary_label).toBe('社会保険の扶養');
+    });
+
+    test('すべての壁が無効化されても income_tax のフォールバックが効きクラッシュしない', () => {
+      const settings: UserSettings = {
+        birth_date: getBirthDateForAge(25),
+        dependent_type: 'none',
+        large_company: false,
+        carryover_income: 0,
+        plan: 'free',
+      };
+      // 'none' の唯一の壁である income_tax を無効化 → 配列が空になる
+      const rulesAllDisabled: TaxRules = {
+        ...mockRules,
+        disabled_walls: ['income_tax'],
+      };
+      const result = calcWalls(settings, rulesAllDisabled);
+
+      // フォールバックで所得税非課税枠が必ず1つ表示される
+      expect(result.walls).toHaveLength(1);
+      expect(result.primary_label).toBe('所得税非課税枠');
+      expect(result.primary_wall).toBe(1_780_000);
+    });
+
+    test('disabled_walls が未定義でも従来どおりすべての壁が有効', () => {
+      const settings: UserSettings = {
+        birth_date: getBirthDateForAge(19),
+        dependent_type: 'parent',
+        large_company: true,
+        carryover_income: 0,
+        plan: 'free',
+      };
+      const result = calcWalls(settings, mockRules);
+
+      expect(result.walls).toHaveLength(4);
+      expect(result.walls).toContainEqual(
+        expect.objectContaining({ label: '大企業の社保壁', amount: 1_060_000 })
+      );
+    });
+  });
 });

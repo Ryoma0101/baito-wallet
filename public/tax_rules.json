@@ -13,6 +13,7 @@
     "social_insurance_large_company": 1060000,
     "residence_tax_approx": 1100000
   },
+  "disabled_walls": [],
   "news": [
     {
       "id": "2026-reform-178",
