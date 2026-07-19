@@ -8,6 +8,7 @@ describe('revenue.ts', () => {
     birth_date: '2000-01-01',
     dependent_type: 'none',
     large_company: false,
+    is_student: false,
     carryover_income: 0,
     plan: 'free',
   };

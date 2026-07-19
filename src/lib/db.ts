@@ -106,6 +106,14 @@ const migrations: Migration[] = [
       await database.runAsync('ALTER TABLE user_settings_new RENAME TO user_settings');
     },
   },
+  {
+    version: 5,
+    description: 'user_settingsにis_student追加（昼間学生の106万円壁除外）',
+    up: async (database) => {
+      // 既存ユーザーは学生でない（false=0）をデフォルトとし、従来の挙動を保存的に維持する
+      await database.runAsync('ALTER TABLE user_settings ADD COLUMN is_student INTEGER NOT NULL DEFAULT 0');
+    },
+  },
 ];
 
 // ============================================================
@@ -194,18 +202,20 @@ export function getDB(): SQLite.SQLiteDatabase {
 export async function saveUserSettings(settings: UserSettings): Promise<void> {
   const database = getDB();
   await database.runAsync(
-    `INSERT INTO user_settings (id, birth_date, dependent_type, large_company, carryover_income, plan)
-     VALUES (1, ?, ?, ?, ?, ?)
+    `INSERT INTO user_settings (id, birth_date, dependent_type, large_company, is_student, carryover_income, plan)
+     VALUES (1, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        birth_date = excluded.birth_date,
        dependent_type = excluded.dependent_type,
        large_company = excluded.large_company,
+       is_student = excluded.is_student,
        carryover_income = excluded.carryover_income,
        plan = excluded.plan`,
     [
       settings.birth_date,
       settings.dependent_type,
       settings.large_company ? 1 : 0,
+      settings.is_student ? 1 : 0,
       settings.carryover_income,
       settings.plan,
     ],
@@ -221,6 +231,7 @@ export async function getUserSettings(): Promise<UserSettings | null> {
     birth_date: string;
     dependent_type: string;
     large_company: number;
+    is_student: number;
     carryover_income: number;
     plan: string;
   }>('SELECT * FROM user_settings WHERE id = 1');
@@ -231,6 +242,7 @@ export async function getUserSettings(): Promise<UserSettings | null> {
     birth_date: row.birth_date,
     dependent_type: row.dependent_type as UserSettings['dependent_type'],
     large_company: row.large_company === 1,
+    is_student: row.is_student === 1,
     carryover_income: row.carryover_income,
     plan: row.plan as UserSettings['plan'],
   };
