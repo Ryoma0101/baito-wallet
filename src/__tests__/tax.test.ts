@@ -37,9 +37,11 @@ describe('tax.ts', () => {
       
       expect(result.primary_wall).toBe(1_500_000);
       expect(result.walls).toHaveLength(3);
-      // 150万(社保), 150万(特定扶養), 178万(所得税)
+      // 150万(社保), 159万(特定扶養), 178万(所得税)
       expect(result.walls[0].label).toBe('社会保険の扶養');
       expect(result.walls[0].amount).toBe(1_500_000);
+      expect(result.walls[1].label).toBe('特定扶養控除');
+      expect(result.walls[1].amount).toBe(1_590_000);
       expect(result.walls[2].label).toBe('所得税非課税枠');
       expect(result.walls[2].amount).toBe(1_780_000);
     });
@@ -71,7 +73,7 @@ describe('tax.ts', () => {
       
       expect(result.primary_wall).toBe(1_500_000);
       expect(result.walls).toContainEqual(
-        expect.objectContaining({ label: '特定扶養控除', amount: 1_500_000 })
+        expect.objectContaining({ label: '特定扶養控除', amount: 1_590_000 })
       );
     });
 

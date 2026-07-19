@@ -12,7 +12,7 @@ const VALID_TAX_RULES: TaxRules = {
     dependent_general: 1360000,
     dependent_specific_age_min: 19,
     dependent_specific_age_max: 22,
-    dependent_specific_limit: 1500000,
+    dependent_specific_limit: 1590000,
     spouse_full_deduction: 1690000,
     social_insurance_specific: 1500000,
     social_insurance_basic: 1300000,
