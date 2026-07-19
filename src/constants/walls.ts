@@ -12,8 +12,8 @@ export const DEFAULT_WALLS = {
   dependent_specific_age_min: 19,
   /** 特定扶養の最高年齢 */
   dependent_specific_age_max: 22,
-  /** 特定扶養控除の上限 */
-  dependent_specific_limit: 1_500_000,
+  /** 特定親族特別控除の満額上限（2026年分・159万円） */
+  dependent_specific_limit: 1_590_000,
   /** 配偶者控除の満額上限 */
   spouse_full_deduction: 1_690_000,
   /** 社会保険の扶養上限（特定扶養） */

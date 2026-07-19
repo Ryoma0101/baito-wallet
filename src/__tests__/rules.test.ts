@@ -12,7 +12,7 @@ const VALID_TAX_RULES: TaxRules = {
     dependent_general: 1360000,
     dependent_specific_age_min: 19,
     dependent_specific_age_max: 22,
-    dependent_specific_limit: 1500000,
+    dependent_specific_limit: 1590000,
     spouse_full_deduction: 1690000,
     social_insurance_specific: 1500000,
     social_insurance_basic: 1300000,
@@ -158,6 +158,42 @@ describe('fetchTaxRules', () => {
     const result = await fetchTaxRules();
 
     expect(result.version).toBe('2026');
+  });
+
+  test('disabled_walls（文字列配列）を含むJSON → そのまま有効と判定して返す', async () => {
+    const withDisabled = {
+      ...VALID_TAX_RULES,
+      disabled_walls: ['social_insurance_large_company'],
+    };
+    mockFetchSuccess(withDisabled);
+
+    const result = await fetchTaxRules();
+
+    expect(result.disabled_walls).toEqual(['social_insurance_large_company']);
+    expect(result.walls.income_tax).toBe(1_780_000);
+  });
+
+  test('disabled_walls が無いJSON → 後方互換で有効と判定して返す', async () => {
+    // VALID_TAX_RULES は disabled_walls を持たない
+    mockFetchSuccess(VALID_TAX_RULES);
+
+    const result = await fetchTaxRules();
+
+    expect(result.version).toBe('2026');
+    expect(result.disabled_walls).toBeUndefined();
+  });
+
+  test('disabled_walls が文字列以外を含むJSON → フォールバック値を返す', async () => {
+    const badDisabled = {
+      ...VALID_TAX_RULES,
+      disabled_walls: ['social_insurance_large_company', 123],
+    };
+    mockFetchSuccess(badDisabled);
+
+    const result = await fetchTaxRules();
+
+    // 不正なので fetch 結果は破棄され、フォールバック（ローカルJSON）が返る
+    expect(result.walls.income_tax).toBe(DEFAULT_WALLS.income_tax);
   });
 });
 

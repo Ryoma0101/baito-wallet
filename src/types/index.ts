@@ -55,6 +55,13 @@ export interface TaxRules {
   walls: WallValues;
   news: TaxNews[];
   promo_codes?: string[];
+  /**
+   * リモートJSONから壁を無効化するためのキー名の配列。
+   * ここに含まれる壁キー（例: "social_insurance_large_company"）は判定結果から除外される。
+   * 2026年10月の106万円の壁撤廃など、法改正時にアプリ更新なしで壁を消せるようにするためのフィールド。
+   * 省略可能（存在しない場合はすべての壁が有効）。
+   */
+  disabled_walls?: string[];
 }
 
 // ============================================================

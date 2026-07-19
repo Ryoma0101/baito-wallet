@@ -1,18 +1,19 @@
 {
   "version": "2026",
-  "updated_at": "2026-05-28",
+  "updated_at": "2026-07-19",
   "walls": {
     "income_tax": 1780000,
     "dependent_general": 1360000,
     "dependent_specific_age_min": 19,
     "dependent_specific_age_max": 22,
-    "dependent_specific_limit": 1500000,
+    "dependent_specific_limit": 1590000,
     "spouse_full_deduction": 1690000,
     "social_insurance_specific": 1500000,
     "social_insurance_basic": 1300000,
     "social_insurance_large_company": 1060000,
     "residence_tax_approx": 1100000
   },
+  "disabled_walls": [],
   "news": [
     {
       "id": "2026-reform-178",
@@ -25,26 +26,34 @@
     {
       "id": "2026-social-insurance-oct",
       "title": "106万円の壁が2026年10月に撤廃予定",
-      "body": "社会保険の加入要件から賃金要件（月8.8万円）が撤廃されます。週20時間以上勤務の場合は勤務先規模に関わらず加入義務が生じる可能性があります。",
+      "body": "社会保険の加入要件から賃金要件（月8.8万円）が撤廃されます。ただし企業規模要件（従業員51人以上）は2027年10月以降に段階的撤廃のため、撤廃後も『週20時間以上かつ従業員51人以上の企業』が加入条件として残ります。",
       "published_at": "2026-04-01",
       "important": true,
       "target": ["large_company"]
     },
     {
       "id": "2026-specific-dependent",
-      "title": "特定扶養控除の年収要件が150万円に拡大",
-      "body": "19〜22歳の特定扶養親族の年収要件が従来の103万円から150万円に拡大されました。親の扶養に入りながら、より多く稼ぐことが可能になっています。",
+      "title": "特定親族特別控除の満額上限が159万円に拡大",
+      "body": "19〜22歳の特定親族特別控除の満額上限が2026年分から159万円に拡大されました（2025年分は150万円）。ただし健康保険の被扶養者認定は150万円未満のままのため、社会保険の扶養に入り続けるには実質的に150万円が上限となる点にご注意ください。",
       "published_at": "2026-01-15",
       "important": false,
       "target": ["parent"]
     },
     {
       "id": "2026-spouse-deduction",
-      "title": "配偶者控除の適用上限が178万円に",
-      "body": "配偶者控除・配偶者特別控除の年収上限が178万円に引き上げられました。社会保険の扶養（130万円）とは別の制度ですのでご注意ください。",
+      "title": "配偶者特別控除の満額上限が169万円に",
+      "body": "配偶者特別控除が満額受けられる年収上限は169万円です。169万円を超えると控除額は段階的に減っていきます。社会保険の扶養（130万円）は別制度ですのでご注意ください。",
       "published_at": "2026-02-01",
       "important": false,
       "target": ["spouse"]
+    },
+    {
+      "id": "2026-130-contract-based",
+      "title": "130万円の壁の判定方法が2026年4月から変更",
+      "body": "2026年4月から、社会保険の扶養（130万円）の判定が『雇用契約書等の契約上の賃金に基づく年収見込み』で行われる運用に変わりました。実際の残業等による一時的な収入増だけで直ちに扶養を外れるわけではなくなります。",
+      "published_at": "2026-04-01",
+      "important": false,
+      "target": ["parent", "spouse"]
     }
   ],
   "promo_codes": [
