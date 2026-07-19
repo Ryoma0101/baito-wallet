@@ -55,23 +55,59 @@ export async function initPurchases(): Promise<void> {
 
 /**
  * 現在のユーザーがプレミアムかどうかを判定する。
- * 以下のいずれかが true の場合にプレミアム:
- * 1. ローカル DB の plan が 'premium' または 'lifetime'
- * 2. RevenueCat のエンタイトルメントが有効
+ *
+ * - ローカル DB の plan が 'lifetime' の場合: 買い切り or 開発者プロモコードによる
+ *   永久解除のため、RevenueCat を確認せず即 true。
+ * - ローカル DB の plan が 'premium'（サブスク）の場合: 解約・失効を検知するため
+ *   RevenueCat の entitlement を再検証する。
+ *   - SDK 未初期化 or API キー未設定（開発環境）の場合は検証不能なので true を維持。
+ *   - 取得に成功し entitlement が有効なら true。
+ *   - 取得に成功したが entitlement が無効（失効）なら DB を 'free' に降格して false。
+ *   - ネットワークエラー等で取得に失敗した場合は、ユーザーを不当にブロックしない
+ *     ためオフライン猶予として true を維持。
+ * - plan が 'free'（または未設定）の場合: RevenueCat の entitlement が有効なら
+ *   DB を 'premium' に同期して true を返す。
  */
 export async function isPremium(): Promise<boolean> {
-  // 1. ローカル DB を先にチェック（高速パス）
+  let plan: string | null = null;
   try {
     const settings = await getUserSettings();
-    if (settings && (settings.plan === 'premium' || settings.plan === 'lifetime')) {
-      return true;
-    }
+    plan = settings?.plan ?? null;
   } catch {
     // DB未初期化の場合は無視
   }
 
-  // 2. RevenueCat をチェック
-  if (!initialized || REVENUECAT_APPLE_KEY.startsWith('YOUR_')) {
+  // 買い切り・プロモコードによる永久解除は RevenueCat を再検証しない
+  if (plan === 'lifetime') {
+    return true;
+  }
+
+  const revenueCatUnavailable = !initialized || REVENUECAT_APPLE_KEY.startsWith('YOUR_');
+
+  if (plan === 'premium') {
+    // サブスクは解約・失効の可能性があるため RevenueCat 側で再検証する
+    if (revenueCatUnavailable) {
+      // 検証不能な開発環境ではプレミアム扱いを維持
+      return true;
+    }
+
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+      if (entitlement) {
+        return true;
+      }
+      // 取得はできたが失効している場合は DB を降格する
+      await updateUserPlan('free');
+      return false;
+    } catch {
+      // ネットワークエラー等はオフライン猶予として true を維持
+      return true;
+    }
+  }
+
+  // plan が 'free' または未設定の場合、RevenueCat 側の有効な購入があれば同期する
+  if (revenueCatUnavailable) {
     return false;
   }
 
