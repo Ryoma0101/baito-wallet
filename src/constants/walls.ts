@@ -20,7 +20,7 @@ export const DEFAULT_WALLS = {
   social_insurance_specific: 1_500_000,
   /** 社会保険の扶養上限（基本） */
   social_insurance_basic: 1_300_000,
-  /** 社会保険の扶養上限（大企業） */
+  /** 社会保険の加入義務ライン（従業員51人以上の勤務先） */
   social_insurance_large_company: 1_060_000,
   /** 住民税の非課税ライン（目安） */
   residence_tax_approx: 1_100_000,

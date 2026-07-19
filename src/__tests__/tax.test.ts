@@ -47,7 +47,7 @@ describe('tax.ts', () => {
       expect(result.walls[2].amount).toBe(1_780_000);
     });
 
-    test('19歳・親の扶養・大企業', () => {
+    test('19歳・親の扶養・従業員51人以上', () => {
       const settings: UserSettings = {
         birth_date: getBirthDateForAge(19),
         dependent_type: 'parent',
@@ -60,7 +60,7 @@ describe('tax.ts', () => {
       
       expect(result.primary_wall).toBe(1_060_000);
       expect(result.walls).toHaveLength(4);
-      expect(result.primary_label).toBe('大企業の社保壁');
+      expect(result.primary_label).toBe('社保加入義務（51人以上）');
     });
 
     test('22歳・親の扶養（特定扶養の上限境界値）', () => {
@@ -116,7 +116,7 @@ describe('tax.ts', () => {
       );
     });
 
-    test('配偶者の扶養・大企業', () => {
+    test('配偶者の扶養・従業員51人以上', () => {
       const settings: UserSettings = {
         birth_date: getBirthDateForAge(30),
         dependent_type: 'spouse',
@@ -135,7 +135,7 @@ describe('tax.ts', () => {
       const settings: UserSettings = {
         birth_date: getBirthDateForAge(25),
         dependent_type: 'none',
-        large_company: false, // 扶養外なら大企業でも扶養の壁は関係ないが、所得税のみ残るはず
+        large_company: false, // 扶養外なら従業員51人以上でも扶養の壁は関係ないが、所得税のみ残るはず
         is_student: false,
         carryover_income: 0,
         plan: 'free',
@@ -147,7 +147,7 @@ describe('tax.ts', () => {
       expect(result.walls[0].label).toBe('所得税非課税枠');
     });
     
-    test('扶養なし・大企業', () => {
+    test('扶養なし・従業員51人以上', () => {
       const settings: UserSettings = {
         birth_date: getBirthDateForAge(25),
         dependent_type: 'none',
@@ -158,10 +158,10 @@ describe('tax.ts', () => {
       };
       const result = calcWalls(settings, mockRules);
       
-      // 扶養なしでも大企業なら自身の社保加入義務（106万）がある
+      // 扶養なしでも従業員51人以上なら自身の社保加入義務（106万）がある
       expect(result.primary_wall).toBe(1_060_000);
       expect(result.walls).toHaveLength(2);
-      expect(result.primary_label).toBe('大企業の社保壁');
+      expect(result.primary_label).toBe('社保加入義務（51人以上）');
     });
 
     test('昼間学生・large_company=true → 106万円の壁が出ない', () => {
@@ -177,7 +177,7 @@ describe('tax.ts', () => {
 
       // 昼間学生は勤務先規模に関係なく106万円の壁の適用除外
       expect(result.walls).not.toContainEqual(
-        expect.objectContaining({ label: '大企業の社保壁' })
+        expect.objectContaining({ label: '社保加入義務（51人以上）' })
       );
       expect(result.walls).toHaveLength(3);
     });
@@ -194,7 +194,7 @@ describe('tax.ts', () => {
       const result = calcWalls(settings, mockRules);
 
       expect(result.walls).toContainEqual(
-        expect.objectContaining({ label: '大企業の社保壁', amount: 1_060_000 })
+        expect.objectContaining({ label: '社保加入義務（51人以上）', amount: 1_060_000 })
       );
       expect(result.walls).toHaveLength(4);
       expect(result.primary_wall).toBe(1_060_000);
@@ -215,13 +215,13 @@ describe('tax.ts', () => {
       expect(result.primary_wall).toBe(1_500_000);
       expect(result.primary_label).toBe('社会保険の扶養');
       expect(result.walls).not.toContainEqual(
-        expect.objectContaining({ label: '大企業の社保壁' })
+        expect.objectContaining({ label: '社保加入義務（51人以上）' })
       );
     });
   });
 
   describe('calcWalls: disabled_walls（リモートJSONによる壁の無効化）', () => {
-    test('disabled_walls で106万円の壁（大企業）が判定から消える', () => {
+    test('disabled_walls で106万円の壁（従業員51人以上）が判定から消える', () => {
       const settings: UserSettings = {
         birth_date: getBirthDateForAge(19),
         dependent_type: 'parent',
@@ -238,7 +238,7 @@ describe('tax.ts', () => {
 
       // 106万の壁が消えるので、次の壁（社保の扶養150万）が primary になる
       expect(result.walls).not.toContainEqual(
-        expect.objectContaining({ label: '大企業の社保壁' })
+        expect.objectContaining({ label: '社保加入義務（51人以上）' })
       );
       expect(result.walls).toHaveLength(3);
       expect(result.primary_wall).toBe(1_500_000);
@@ -280,7 +280,7 @@ describe('tax.ts', () => {
 
       expect(result.walls).toHaveLength(4);
       expect(result.walls).toContainEqual(
-        expect.objectContaining({ label: '大企業の社保壁', amount: 1_060_000 })
+        expect.objectContaining({ label: '社保加入義務（51人以上）', amount: 1_060_000 })
       );
     });
   });

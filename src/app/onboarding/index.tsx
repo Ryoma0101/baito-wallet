@@ -25,7 +25,7 @@ const STEPS: Step[] = ['birth_date', 'dependent_type', 'large_company', 'is_stud
 const STEP_TITLES: Record<Step, string> = {
   birth_date: '生年月日を入力してください',
   dependent_type: '扶養の種別を選択してください',
-  large_company: '勤務先の規模を教えてください',
+  large_company: '勤務先の従業員数を教えてください',
   is_student: '昼間の学生ですか？',
   carryover_income: '今年の繰越収入を入力してください',
 };
@@ -33,7 +33,7 @@ const STEP_TITLES: Record<Step, string> = {
 const STEP_SUBTITLES: Record<Step, string> = {
   birth_date: '年齢に応じた壁を自動判定します',
   dependent_type: '適用される控除が変わります',
-  large_company: '大企業の場合は106万円の壁も適用されます',
+  large_company: '従業員51人以上の勤務先では106万円の壁も適用されます',
   is_student: '昼間部の学生は106万円の壁が適用されません',
   carryover_income: '年途中でインストールした場合の既存収入額です',
 };
@@ -214,8 +214,8 @@ export default function OnboardingScreen() {
             {currentStep === 'large_company' && (
               <View style={styles.optionsContainer}>
                 {([
-                  { value: false, label: '中小企業・個人事業', desc: '従業員50人以下など' },
-                  { value: true, label: '大企業', desc: '従業員51人以上（社保の106万壁あり）' },
+                  { value: false, label: '従業員50人以下', desc: '個人事業・中小規模の勤務先など' },
+                  { value: true, label: '従業員51人以上', desc: '106万円を超えると社保加入義務あり' },
                 ]).map((option) => (
                   <TouchableOpacity
                     key={String(option.value)}
